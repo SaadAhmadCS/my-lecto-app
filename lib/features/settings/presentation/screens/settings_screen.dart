@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/audio_merge_service.dart';
 import '../../../../core/constants/transcription_language.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -24,36 +25,25 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
+          // Read-only facts rather than taps that do nothing. Both are
+          // compile-time settings; tapping them used to say "Coming soon".
           _buildSection(
             context,
             title: 'Recording',
             children: [
               _SettingsTile(
                 icon: Icons.timer_outlined,
-                title: 'Chunk Duration',
-                subtitle: '15 minutes',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Coming soon'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                },
+                title: 'Split every',
+                subtitle:
+                    '${AppConstants.defaultChunkDurationMinutes} minutes · '
+                    'limits what a crash can cost',
               ),
               _SettingsTile(
                 icon: Icons.audiotrack_rounded,
-                title: 'Audio Quality',
-                subtitle: 'Voice (HE-AAC '
-                    '${AppConstants.audioBitRate ~/ 1000}kbps mono)',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Coming soon'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                },
+                title: 'Audio quality',
+                subtitle: 'Voice — HE-AAC '
+                    '${AppConstants.audioBitRate ~/ 1000}kbps mono, about '
+                    '${(AppConstants.audioBitRate / 8 * 3600 / 1000000).round()}MB an hour',
               ),
             ],
           ),
@@ -62,64 +52,14 @@ class SettingsScreen extends StatelessWidget {
           _buildSection(
             context,
             title: 'Storage',
-            children: [
-              _SettingsTile(
-                icon: Icons.storage_rounded,
-                title: 'Auto-Delete Audio',
-                subtitle: 'After transcript is confirmed',
-                trailing: Switch(
-                  value: true,
-                  onChanged: (_) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming soon'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-                  },
-                  activeThumbColor: AppColors.primary,
-                ),
-              ),
-              _SettingsTile(
-                icon: Icons.cleaning_services_rounded,
-                title: 'Clear Cache',
-                subtitle: 'Free up temporary files',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Coming soon'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                },
-              ),
-            ],
+            children: const [_ClearCacheTile()],
           ),
           const SizedBox(height: AppSpacing.xl),
 
           _buildSection(
             context,
-            title: 'AI Processing',
-            children: [
-              const _TranscriptionLanguageTile(),
-              _SettingsTile(
-                icon: Icons.bolt_rounded,
-                title: 'Auto-Process',
-                subtitle: 'Generate notes when recording stops',
-                trailing: Switch(
-                  value: true,
-                  onChanged: (_) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming soon'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-                  },
-                  activeThumbColor: AppColors.primary,
-                ),
-              ),
-            ],
+            title: 'Notes',
+            children: const [_TranscriptionLanguageTile()],
           ),
           const SizedBox(height: AppSpacing.xl),
 
@@ -192,14 +132,12 @@ class _SettingsTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback? onTap;
-  final Widget? trailing;
 
   const _SettingsTile({
     required this.icon,
     required this.title,
     required this.subtitle,
     this.onTap,
-    this.trailing,
   });
 
   @override
@@ -234,7 +172,6 @@ class _SettingsTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
           ],
         ),
       ),
@@ -242,7 +179,7 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
-/// Picks the language hint sent with new recordings (TRX-015).
+/// Tells your AI what language the lecture is in, and what to write back in.
 class _TranscriptionLanguageTile extends StatefulWidget {
   const _TranscriptionLanguageTile();
 
@@ -268,7 +205,7 @@ class _TranscriptionLanguageTileState
       context: context,
       builder: (ctx) => SimpleDialog(
         backgroundColor: AppColors.darkSurface,
-        title: const Text('Transcription language'),
+        title: const Text('Lecture language'),
         children: [
           RadioGroup<TranscriptionLanguage>(
             groupValue: _language,
@@ -298,10 +235,80 @@ class _TranscriptionLanguageTileState
   Widget build(BuildContext context) {
     return _SettingsTile(
       icon: Icons.translate_rounded,
-      title: 'Transcription Language',
-      subtitle: '${_language.label} · applies to new recordings',
+      title: 'Lecture language',
+      subtitle: '${_language.label} · told to your AI when you share',
       onTap: _pickLanguage,
     );
   }
 }
 
+
+/// Frees the merged copies made when sharing a lecture.
+///
+/// Merging a long lecture writes a second copy of its audio, so this can grow
+/// to a real size. The copies are rebuilt on the next share, so clearing them
+/// costs nothing but a moment.
+class _ClearCacheTile extends StatefulWidget {
+  const _ClearCacheTile();
+
+  @override
+  State<_ClearCacheTile> createState() => _ClearCacheTileState();
+}
+
+class _ClearCacheTileState extends State<_ClearCacheTile> {
+  int _bytes = 0;
+  bool _isWorking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _measure();
+  }
+
+  Future<void> _measure() async {
+    final bytes = await AudioMergeService.cacheSize();
+    if (mounted) setState(() => _bytes = bytes);
+  }
+
+  Future<void> _clear() async {
+    if (_isWorking) return;
+    if (_bytes == 0) {
+      _showSnack('Nothing to clear.');
+      return;
+    }
+
+    setState(() => _isWorking = true);
+    final freed = await AudioMergeService.clearAllCaches();
+    if (!mounted) return;
+
+    setState(() {
+      _bytes = 0;
+      _isWorking = false;
+    });
+    _showSnack('Freed ${_format(freed)}.');
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  static String _format(int bytes) {
+    if (bytes >= 1000000) return '${(bytes / 1000000).toStringAsFixed(1)} MB';
+    if (bytes >= 1000) return '${(bytes / 1000).round()} KB';
+    return '$bytes bytes';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsTile(
+      icon: Icons.cleaning_services_rounded,
+      title: 'Clear share cache',
+      subtitle: _bytes == 0
+          ? 'Nothing cached — your recordings are not affected'
+          : '${_format(_bytes)} of merged copies · recordings are kept',
+      onTap: _isWorking ? null : _clear,
+    );
+  }
+}

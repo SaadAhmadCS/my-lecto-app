@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../constants/transcription_language.dart';
 import 'audio_merge_service.dart';
 
 /// Shares a recording's audio into whichever AI app the student uses.
@@ -62,6 +63,7 @@ class AiShareService {
     DateTime? recordingDate,
     Duration? duration,
     bool askForTranscript = true,
+    TranscriptionLanguage language = TranscriptionLanguage.auto,
   }) {
     final buffer = StringBuffer()
       ..writeln('You are helping a student turn a lecture recording into '
@@ -78,6 +80,12 @@ class AiShareService {
     }
     if (duration != null) {
       buffer.writeln('It runs for about ${_formatDuration(duration)}.');
+    }
+    // Left on auto this says nothing, so the AI works it out — which handles
+    // a lecture that switches language mid-sentence better than a guess.
+    final languageLine = language.promptLine;
+    if (languageLine != null) {
+      buffer.writeln(languageLine);
     }
 
     buffer

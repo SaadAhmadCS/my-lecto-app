@@ -48,3 +48,9 @@ app.*.map.json
 # own copy in from the Firebase console.
 /android/app/google-services.json
 /ios/Runner/GoogleService-Info.plist
+
+# Release signing — these must never be published. Losing them means you can
+# no longer ship updates that install over an existing copy of the app.
+/android/key.properties
+/android/app/*.jks
+/android/app/*.keystore

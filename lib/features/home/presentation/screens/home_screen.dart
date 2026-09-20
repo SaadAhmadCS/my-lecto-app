@@ -253,14 +253,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'AI-Powered Notes',
+                      'Notes from your own AI',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Record → Transcribe → Study',
+                      'Record → Share → Paste',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.textSecondaryDark,
                           ),
@@ -271,13 +271,27 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.base),
+          // Nothing happens on its own, so the three steps are spelled out.
+          // Promising automatic notes would leave a new user waiting for
+          // something that never arrives.
+          const _HeroStep(
+            number: '1',
+            text: 'Tap the mic to record your lecture.',
+          ),
+          const _HeroStep(
+            number: '2',
+            text: 'Open it and share the audio to Claude, Gemini or Grok.',
+          ),
+          const _HeroStep(
+            number: '3',
+            text: 'Copy their reply and paste it back — it becomes your notes.',
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text(
-            'Tap the mic to start recording a lecture. '
-            'Lecto will automatically transcribe the audio and '
-            'generate structured study notes for you.',
+            'Everything stays on this phone. Nothing is uploaded.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.textTertiaryDark,
-                  height: 1.5,
+                  fontStyle: FontStyle.italic,
                 ),
           ),
         ],
@@ -582,5 +596,52 @@ class _RecentRecordingTile extends StatelessWidget {
     } catch (_) {
       return '';
     }
+  }
+}
+
+/// One numbered step in the "how this works" card on Home.
+class _HeroStep extends StatelessWidget {
+  final String number;
+  final String text;
+
+  const _HeroStep({required this.number, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              number,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textTertiaryDark,
+                    height: 1.45,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

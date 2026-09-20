@@ -85,6 +85,41 @@ class AudioMergeService {
     }
   }
 
+  /// How much space every cached merge is using, in bytes.
+  static Future<int> cacheSize() async {
+    try {
+      final dir = await _cacheDir();
+      if (!await dir.exists()) return 0;
+
+      var total = 0;
+      await for (final entity in dir.list()) {
+        if (entity is File) total += await entity.length();
+      }
+      return total;
+    } catch (e) {
+      debugPrint('AudioMerge: could not measure cache: $e');
+      return 0;
+    }
+  }
+
+  /// Delete every cached merge, returning how many bytes were freed.
+  ///
+  /// Safe at any time: these are copies of audio the app still holds, rebuilt
+  /// on the next share. No recording is affected.
+  static Future<int> clearAllCaches() async {
+    try {
+      final dir = await _cacheDir();
+      if (!await dir.exists()) return 0;
+
+      final freed = await cacheSize();
+      await dir.delete(recursive: true);
+      return freed;
+    } catch (e) {
+      debugPrint('AudioMerge: could not clear cache: $e');
+      return 0;
+    }
+  }
+
   static Future<Directory> _cacheDir() async {
     final temp = await getTemporaryDirectory();
     return Directory('${temp.path}/$_cacheDirName');

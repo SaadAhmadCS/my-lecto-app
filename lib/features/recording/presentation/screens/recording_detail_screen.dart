@@ -7,6 +7,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/transcription_language.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/services/ai_share_service.dart';
@@ -143,6 +144,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
         // A long lecture's transcript will not fit in one reply, and asking
         // for it costs the notes their detail.
         askForTranscript: AiShareService.shouldRequestTranscript(_duration),
+        // Tells the AI what it is listening to and what to write back in.
+        language: await TranscriptionLanguage.load(),
       );
 
       final shared = await AiShareService.shareToAiApp(
