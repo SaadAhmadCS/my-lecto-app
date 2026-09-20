@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/errors/error_messages.dart';
 import '../../../../core/services/audio_merge_service.dart';
+import '../../../../core/services/feedback_service.dart';
+import '../../../recording/data/local/recording_feed.dart';
 import '../../../../core/constants/transcription_language.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+
+/// The app's version, shown in Settings and attached to feedback.
+const String appVersion = '1.0.0';
 
 /// Settings screen — app configuration and info.
 class SettingsScreen extends StatelessWidget {
@@ -66,16 +74,19 @@ class SettingsScreen extends StatelessWidget {
           _buildSection(
             context,
             title: 'About',
-            children: [
+            children: const [
+              _SendFeedbackTile(),
               _SettingsTile(
                 icon: Icons.info_outline_rounded,
                 title: 'Version',
-                subtitle: '1.0.0-alpha',
+                subtitle: appVersion,
               ),
               _SettingsTile(
-                icon: Icons.code_rounded,
-                title: 'Made with',
-                subtitle: 'Flutter — everything stays on this device',
+                icon: Icons.lock_outline_rounded,
+                title: 'Private by design',
+                subtitle:
+                    'No account, no internet permission, nothing leaves this '
+                    'phone',
               ),
             ],
           ),
@@ -309,6 +320,42 @@ class _ClearCacheTileState extends State<_ClearCacheTile> {
           ? 'Nothing cached — your recordings are not affected'
           : '${_format(_bytes)} of merged copies · recordings are kept',
       onTap: _isWorking ? null : _clear,
+    );
+  }
+}
+
+/// Opens the share sheet with a feedback note already written.
+///
+/// There is no server to post to, so feedback travels by whatever messaging
+/// app the tester already uses. The prompts and the device details are filled
+/// in, because "it didn't work" is not a reportable bug.
+class _SendFeedbackTile extends StatelessWidget {
+  const _SendFeedbackTile();
+
+  Future<void> _send(BuildContext context) async {
+    final feed = context.read<RecordingFeed>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await FeedbackService.send(
+        appVersion: appVersion,
+        recordingCount: await feed.total(),
+        awaitingCount: await feed.awaitingCount(),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(ErrorMessages.from(e, action: 'send feedback'))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsTile(
+      icon: Icons.feedback_outlined,
+      title: 'Send feedback',
+      subtitle: 'Tell me what broke or what is missing',
+      onTap: () => _send(context),
     );
   }
 }

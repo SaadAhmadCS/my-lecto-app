@@ -30,8 +30,7 @@ class RecordingInProgress extends RecordingBlocState {
   final double amplitude;
   final List<CapturedPhoto> photos;
   final int availableStorageMB;
-  final bool isStorageLow;
-  final bool isOnline;
+  final bool isStorageLow;
   final bool isNearMaxDuration;
 
   const RecordingInProgress({
@@ -43,8 +42,7 @@ class RecordingInProgress extends RecordingBlocState {
     this.amplitude = 0.0,
     this.photos = const [],
     this.availableStorageMB = -1,
-    this.isStorageLow = false,
-    this.isOnline = true,
+    this.isStorageLow = false,
     this.isNearMaxDuration = false,
   });
 
@@ -56,8 +54,7 @@ class RecordingInProgress extends RecordingBlocState {
     double? amplitude,
     List<CapturedPhoto>? photos,
     int? availableStorageMB,
-    bool? isStorageLow,
-    bool? isOnline,
+    bool? isStorageLow,
     bool? isNearMaxDuration,
   }) {
     return RecordingInProgress(
@@ -69,8 +66,7 @@ class RecordingInProgress extends RecordingBlocState {
       amplitude: amplitude ?? this.amplitude,
       photos: photos ?? this.photos,
       availableStorageMB: availableStorageMB ?? this.availableStorageMB,
-      isStorageLow: isStorageLow ?? this.isStorageLow,
-      isOnline: isOnline ?? this.isOnline,
+      isStorageLow: isStorageLow ?? this.isStorageLow,
       isNearMaxDuration: isNearMaxDuration ?? this.isNearMaxDuration,
     );
   }
@@ -94,8 +90,7 @@ class RecordingInProgress extends RecordingBlocState {
         amplitude,
         photos,
         availableStorageMB,
-        isStorageLow,
-        isOnline,
+        isStorageLow,
         isNearMaxDuration,
       ];
 }

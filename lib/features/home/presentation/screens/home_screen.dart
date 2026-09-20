@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(width: AppSpacing.sm),
             Text(
-              'Lecto',
+              'My Lecto',
               style: Theme.of(context)
                   .textTheme
                   .headlineMedium

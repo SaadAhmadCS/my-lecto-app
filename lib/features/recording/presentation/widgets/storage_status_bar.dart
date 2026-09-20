@@ -3,18 +3,19 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 
-/// Status bar showing connectivity, storage, and upload progress.
+/// Storage left and how much of the lecture is safely written to disk.
+///
+/// There is no connectivity indicator: the app has no network permission, so
+/// online or offline makes no difference to anything it does.
 class StorageStatusBar extends StatelessWidget {
   final int availableMB;
   final bool isStorageLow;
-  final bool isOnline;
   final int completedChunks;
 
   const StorageStatusBar({
     super.key,
     required this.availableMB,
     required this.isStorageLow,
-    required this.isOnline,
     required this.completedChunks,
   });
 
@@ -39,20 +40,6 @@ class StorageStatusBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Connectivity
-          _buildIndicator(
-            icon: isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-            label: isOnline ? 'Online' : 'Offline',
-            color: isOnline ? AppColors.success : AppColors.warning,
-          ),
-
-          // Separator
-          Container(
-            height: 16,
-            width: 1,
-            color: AppColors.textTertiaryDark.withValues(alpha: 0.2),
-          ),
-
           // Storage
           _buildIndicator(
             icon: Icons.storage_rounded,
@@ -67,9 +54,10 @@ class StorageStatusBar extends StatelessWidget {
             color: AppColors.textTertiaryDark.withValues(alpha: 0.2),
           ),
 
-          // Chunks saved
+          // Parts written to disk. Nothing is uploaded, so a cloud icon here
+          // would suggest something the app does not do.
           _buildIndicator(
-            icon: Icons.cloud_done_rounded,
+            icon: Icons.save_rounded,
             label: '$completedChunks saved',
             color: AppColors.success,
           ),

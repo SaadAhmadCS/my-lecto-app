@@ -780,9 +780,26 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                 color: AppColors.textTertiaryDark,
               ),
         ),
+        // A free Gemini account caps audio at 10 minutes. Without this the
+        // rejection looks like a bug in this app rather than a plan limit.
+        if (_duration != null && _duration! > _freeTierAudioLimit) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'This one is ${_duration!.inMinutes} minutes. Gemini only accepts '
+            '${_freeTierAudioLimit.inMinutes} minutes of audio on a free '
+            'account — a paid plan raises that to 3 hours.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.warning,
+                ),
+          ),
+        ],
       ],
     );
   }
+
+  /// Audio a free Gemini account will accept in one go.
+  static const Duration _freeTierAudioLimit = Duration(minutes: 10);
 
   Widget _buildSummaryView() {
     if (_summaryContent == null || _summaryContent!.isEmpty) {

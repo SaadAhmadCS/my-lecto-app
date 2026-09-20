@@ -200,8 +200,7 @@ class _RecordingScreenBody extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: StorageStatusBar(
               availableMB: state.availableStorageMB,
-              isStorageLow: state.isStorageLow,
-              isOnline: state.isOnline,
+              isStorageLow: state.isStorageLow,
               completedChunks: state.completedChunks,
             ),
           ),
