@@ -1,0 +1,10 @@
+# Regenerate: dart run flutter_launcher_icons
+# Placeholder artwork (the sign-in screen's book mark) until a Lecto logo
+# exists; replace the PNGs in assets/branding/ and rerun.
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: false # no iOS project yet
+  image_path: "assets/branding/app_icon.png"
+  adaptive_icon_background: "#6366F1"
+  adaptive_icon_foreground: "assets/branding/app_icon_foreground.png"
+  min_sdk_android: 21

@@ -1,0 +1,13 @@
+# Regenerate: dart run flutter_native_splash:create
+# Dark background matches the app, so there's no white flash before the
+# first Flutter frame. Placeholder logo — see flutter_launcher_icons.yaml.
+flutter_native_splash:
+  color: "#0F0F14"
+  image: assets/branding/splash_logo.png
+  android_12:
+    color: "#0F0F14"
+    image: assets/branding/splash_logo_android12.png
+  android: true
+  ios: false # no iOS project yet
+  web: false
+  fullscreen: false
