@@ -32,7 +32,7 @@ class AppColors {
   static const Color borderStrong = Color(0xFFD8D0C5);
 
   /// The floating bottom navigation bar.
-  static const Color navBar = Color(0xFF1E1B18);
+  static const Color navBar = Color(0xFF1C1917);
   static const Color navBarMuted = Color(0xFF2C2723);
 
   // === Text ===
@@ -46,18 +46,18 @@ class AppColors {
   // === Card tints ===
   /// Soft backgrounds for the dashboard cards, paired with [tintInk] text.
   static const Color tintCoral = Color(0xFFFCEEE8);
-  static const Color tintLavender = Color(0xFFEDE9FE);
-  static const Color tintMint = Color(0xFFD9F2E6);
-  static const Color tintSky = Color(0xFFDCEBFB);
+  static const Color tintLavender = Color(0xFFEFEAFF);
+  static const Color tintMint = Color(0xFFDCF7EA);
+  static const Color tintSky = Color(0xFFE1F1FF);
   static const Color tintYellow = Color(0xFFFFF2CD);
   static const Color tintPink = Color(0xFFFFEBF0);
   static const Color tintCream = Color(0xFFFEF4DC);
 
   /// Readable ink for each tint above.
   static const Color inkCoral = Color(0xFF743C28);
-  static const Color inkLavender = Color(0xFF5244E3);
-  static const Color inkMint = Color(0xFF128B62);
-  static const Color inkSky = Color(0xFF2E78E6);
+  static const Color inkLavender = Color(0xFF47368B);
+  static const Color inkMint = Color(0xFF0E6245);
+  static const Color inkSky = Color(0xFF16528E);
 
   // === Status ===
   static const Color success = Color(0xFF128B62);

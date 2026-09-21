@@ -14,14 +14,14 @@ import '../local/recording_dao.dart';
 /// Every chunk that finished recording was already saved. The chunk being written when the app died is an unfinalized .m4a
 /// that can't be decoded (and would fail to play), so it is discarded. What's left is completed like a normal stop.
 class RecordingRecoveryService {
-  final RecordingDao _dao;
+  final RecordingDao _dao;
   final Future<Directory> Function(String recordingId) _recordingDir;
 
   RecordingRecoveryService({
-    required RecordingDao dao,
+    required RecordingDao dao,
     Future<Directory> Function(String recordingId)? recordingDir,
-  })  : _dao = dao,
-        _recordingDir = recordingDir ?? _defaultRecordingDir;
+  }) : _dao = dao,
+       _recordingDir = recordingDir ?? _defaultRecordingDir;
 
   // Where AudioRecorderService writes a recording's chunks
   static Future<Directory> _defaultRecordingDir(String recordingId) async {
@@ -39,7 +39,7 @@ class RecordingRecoveryService {
       try {
         final result = await _recover(
           id,
-          row['title'] as String? ?? 'Recording',
+          row['title'] as String? ?? 'Recording',
         );
         if (result != null) recovered.add(result);
       } catch (e) {
@@ -49,16 +49,13 @@ class RecordingRecoveryService {
     return recovered;
   }
 
-  Future<RecoveredRecording?> _recover(
-    String id,
-    String title,
-  ) async {
+  Future<RecoveredRecording?> _recover(String id, String title) async {
     final saved = await _savedChunks(id);
     final dir = await _recordingDir(id);
 
     if (saved.isEmpty) {
       // Died before the first chunk finished: nothing usable to process.
-      debugPrint('RecordingRecovery: $id has no finished audio, discarding');
+      debugPrint('RecordingRecovery: $id has no finished audio, discarding');
       await _dao.deleteRecording(id);
       if (await dir.exists()) await dir.delete(recursive: true);
       return null;
@@ -66,12 +63,15 @@ class RecordingRecoveryService {
 
     final lostEnd = await _deleteUnsavedChunkFiles(dir, keep: saved.values);
 
-    final totalDurationMs = saved.values.fold<int>(0, (sum, c) => sum + c.durationMs);
+    final totalDurationMs = saved.values.fold<int>(
+      0,
+      (sum, c) => sum + c.durationMs,
+    );
     await _dao.updateRecording(
       id: id,
       status: 'completed',
       totalDurationMs: totalDurationMs,
-    );
+    );
 
     debugPrint(
       'RecordingRecovery: recovered $id '
@@ -111,7 +111,9 @@ class RecordingRecoveryService {
       if (entity is File &&
           entity.path.endsWith('.m4a') &&
           !keepPaths.contains(p.canonicalize(entity.path))) {
-        debugPrint('RecordingRecovery: discarding unfinished chunk ${entity.path}');
+        debugPrint(
+          'RecordingRecovery: discarding unfinished chunk ${entity.path}',
+        );
         await entity.delete();
         discarded = true;
       }

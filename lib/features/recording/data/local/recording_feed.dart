@@ -24,7 +24,8 @@ class RecordingFeed {
     try {
       final db = await RecordingDatabase.database;
 
-      final rows = await db.rawQuery('''
+      final rows = await db.rawQuery(
+        '''
         SELECT r.id, r.title, r.created_at, r.total_duration_ms,
                r.notes_markdown,
                s.id AS subject_id, s.name AS subject_name,
@@ -36,10 +37,9 @@ class RecordingFeed {
         ${subjectId != null ? 'WHERE r.subject_id = ?' : ''}
         ORDER BY r.created_at DESC
         ${limit != null ? 'LIMIT ?' : ''}
-      ''', [
-        if (subjectId != null) subjectId,
-        if (limit != null) limit,
-      ]);
+      ''',
+        [if (subjectId != null) subjectId, if (limit != null) limit],
+      );
 
       return rows.map(_toCardShape).toList();
     } catch (e) {
@@ -48,13 +48,16 @@ class RecordingFeed {
     }
   }
 
-  /// How many recordings are still waiting for notes.
+  /// How many finished recordings are still waiting for notes.
+  ///
+  /// One still being recorded is not waiting yet — it cannot be shared.
   Future<int> awaitingCount() async {
     try {
       final db = await RecordingDatabase.database;
       final rows = await db.rawQuery(
         'SELECT COUNT(*) AS n FROM recordings '
-        "WHERE notes_markdown IS NULL OR notes_markdown = ''",
+        "WHERE (notes_markdown IS NULL OR notes_markdown = '') "
+        "AND status != 'recording'",
       );
       return Sqflite.firstIntValue(rows) ?? 0;
     } catch (e) {
@@ -82,8 +85,9 @@ class RecordingFeed {
     return {
       'id': row['id'],
       'title': row['title'] ?? 'Untitled',
-      'processingStatus':
-          (notes != null && notes.isNotEmpty) ? ready : awaitingNotes,
+      'processingStatus': (notes != null && notes.isNotEmpty)
+          ? ready
+          : awaitingNotes,
       'createdAt': row['created_at'],
       'totalDurationMs': (row['total_duration_ms'] as int?) ?? 0,
       '_count': {'chunks': (row['chunk_count'] as int?) ?? 0},

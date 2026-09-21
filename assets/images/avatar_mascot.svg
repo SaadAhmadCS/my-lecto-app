@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <defs>
+    <linearGradient id="socCoralGrad" x1="0" y1="0" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF7640"/>
+      <stop offset="100%" stop-color="#F25B20"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Circular Avatar Container -->
+  <rect width="400" height="400" rx="160" fill="url(#socCoralGrad)"/>
+
+  <!-- AI Spark Rays (Top Right) -->
+  <path d="M294 100L316 68" stroke="#FFE175" stroke-width="12" stroke-linecap="round"/>
+  <path d="M324 114L356 108" stroke="#FFE175" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="350" cy="70" r="6" fill="#FFE175"/>
+
+  <!-- Mascot Body / Head -->
+  <rect x="88" y="104" width="224" height="216" rx="72" fill="#FFF8FA"/>
+
+  <!-- Eyes with glossy highlights -->
+  <circle cx="156" cy="190" r="18" fill="#201A18"/>
+  <circle cx="163" cy="183" r="6" fill="#FFFFFF"/>
+
+  <circle cx="244" cy="190" r="18" fill="#201A18"/>
+  <circle cx="251" cy="183" r="6" fill="#FFFFFF"/>
+
+  <!-- Cute Rosy Cheeks -->
+  <ellipse cx="136" cy="218" rx="14" ry="8" fill="#FFAF99" opacity="0.6"/>
+  <ellipse cx="264" cy="218" rx="14" ry="8" fill="#FFAF99" opacity="0.6"/>
+
+  <!-- Warm Smile -->
+  <path d="M176 228C185 244 215 244 224 228" stroke="#201A18" stroke-width="11" stroke-linecap="round"/>
+
+  <!-- Subtle Lecto Audio pulse badge below smile -->
+  <rect x="185" y="272" width="7" height="18" rx="3.5" fill="#F96D38"/>
+  <rect x="197" y="265" width="7" height="28" rx="3.5" fill="#F96D38"/>
+  <circle cx="215" cy="279" r="4.5" fill="#F96D38"/>
+</svg>

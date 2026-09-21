@@ -39,14 +39,19 @@ class TranscriptSearchIndex {
   }
 
   static List<String> _toParagraphs(String markdown) {
-    final withoutComments = markdown.replaceAll(RegExp(r'<!--.*?-->', dotAll: true), '');
+    final withoutComments = markdown.replaceAll(
+      RegExp(r'<!--.*?-->', dotAll: true),
+      '',
+    );
     return withoutComments
         .split(RegExp(r'\n\s*\n'))
-        .map((block) => block
-            .split('\n')
-            .map(_cleanLine)
-            .where((line) => line.isNotEmpty)
-            .join('\n'))
+        .map(
+          (block) => block
+              .split('\n')
+              .map(_cleanLine)
+              .where((line) => line.isNotEmpty)
+              .join('\n'),
+        )
         .where((paragraph) => paragraph.isNotEmpty && paragraph != '---')
         .toList();
   }
@@ -81,9 +86,9 @@ class SearchableTranscriptView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final baseStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppColors.textPrimaryDark,
-          height: 1.6,
-        );
+      color: AppColors.textPrimaryDark,
+      height: 1.6,
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.base),
@@ -116,16 +121,18 @@ class SearchableTranscriptView extends StatelessWidget {
         spans.add(TextSpan(text: text.substring(cursor, match.start)));
       }
       final isCurrent = i == currentMatch;
-      spans.add(TextSpan(
-        text: text.substring(match.start, match.start + match.length),
-        style: TextStyle(
-          backgroundColor: isCurrent
-              ? AppColors.primary
-              : AppColors.warning.withValues(alpha: 0.35),
-          color: isCurrent ? Colors.white : null,
-          fontWeight: FontWeight.w600,
+      spans.add(
+        TextSpan(
+          text: text.substring(match.start, match.start + match.length),
+          style: TextStyle(
+            backgroundColor: isCurrent
+                ? AppColors.primary
+                : AppColors.warning.withValues(alpha: 0.35),
+            color: isCurrent ? Colors.white : null,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-      ));
+      );
       cursor = match.start + match.length;
     }
 

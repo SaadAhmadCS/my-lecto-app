@@ -39,7 +39,7 @@ class AudioRecorderService {
   String _recordingsBasePath = '';
 
   AudioRecorderService({required StorageMonitorService storageMonitor})
-      : _storageMonitor = storageMonitor;
+    : _storageMonitor = storageMonitor;
 
   /// Stream of recording events (amplitude, chunk saved, errors).
   Stream<RecordingEvent> get events => _eventController.stream;
@@ -66,18 +66,18 @@ class AudioRecorderService {
 
     // Check permissions
     if (!await _recorder.hasPermission()) {
-      _eventController.add(const RecordingEvent.error(
-        'Microphone permission denied',
-      ));
+      _eventController.add(
+        const RecordingEvent.error('Microphone permission denied'),
+      );
       return;
     }
 
     // Check storage
     final storageStatus = await _storageMonitor.checkStorage();
     if (!storageStatus.canRecord) {
-      _eventController.add(const RecordingEvent.error(
-        'Not enough storage space to record',
-      ));
+      _eventController.add(
+        const RecordingEvent.error('Not enough storage space to record'),
+      );
       return;
     }
 
@@ -88,9 +88,11 @@ class AudioRecorderService {
     );
 
     if (_chunkDurationMinutes <= 0) {
-      _eventController.add(const RecordingEvent.error(
-        'Not enough storage for even a short recording',
-      ));
+      _eventController.add(
+        const RecordingEvent.error(
+          'Not enough storage for even a short recording',
+        ),
+      );
       return;
     }
 
@@ -118,42 +120,43 @@ class AudioRecorderService {
     await ForegroundRecordingService.startService();
 
     // Start duration tracking timer
-    _durationTimer = Timer.periodic(
-      const Duration(milliseconds: 200),
-      (_) {
-        if (_isRecording && !_isPaused) {
-          _totalDuration += const Duration(milliseconds: 200);
-          _chunkDuration += const Duration(milliseconds: 200);
-          _eventController.add(RecordingEvent.durationUpdate(
+    _durationTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      if (_isRecording && !_isPaused) {
+        _totalDuration += const Duration(milliseconds: 200);
+        _chunkDuration += const Duration(milliseconds: 200);
+        _eventController.add(
+          RecordingEvent.durationUpdate(
             totalDuration: _totalDuration,
             chunkDuration: _chunkDuration,
             chunkIndex: _currentChunkIndex,
-          ));
+          ),
+        );
 
-          // Update foreground notification every second
-          if (_totalDuration.inMilliseconds % 1000 < 200) {
-            ForegroundRecordingService.updateDuration(_totalDuration);
-          }
-
-          // Rotate on recorded time, not wall-clock time, so paused time
-          // doesn't stretch a chunk past the STT file-size limits.
-          if (!_isRotating &&
-              _chunkDuration >= Duration(minutes: _chunkDurationMinutes)) {
-            _rotateChunk();
-          }
-
-          _checkMaxDuration();
+        // Update foreground notification every second
+        if (_totalDuration.inMilliseconds % 1000 < 200) {
+          ForegroundRecordingService.updateDuration(_totalDuration);
         }
-      },
-    );
+
+        // Rotate on recorded time, not wall-clock time, so paused time
+        // doesn't stretch a chunk past the STT file-size limits.
+        if (!_isRotating &&
+            _chunkDuration >= Duration(minutes: _chunkDurationMinutes)) {
+          _rotateChunk();
+        }
+
+        _checkMaxDuration();
+      }
+    });
 
     // Start amplitude monitoring
     _startAmplitudeMonitoring();
 
-    _eventController.add(RecordingEvent.started(
-      recordingId: recordingId,
-      chunkDurationMinutes: _chunkDurationMinutes,
-    ));
+    _eventController.add(
+      RecordingEvent.started(
+        recordingId: recordingId,
+        chunkDurationMinutes: _chunkDurationMinutes,
+      ),
+    );
 
     debugPrint(
       'AudioRecorderService: Started recording $recordingId '
@@ -214,7 +217,8 @@ class AudioRecorderService {
 
   /// Start recording a new chunk.
   Future<void> _startChunk() async {
-    final chunkFileName = 'chunk_${_currentChunkIndex.toString().padLeft(3, '0')}.m4a';
+    final chunkFileName =
+        'chunk_${_currentChunkIndex.toString().padLeft(3, '0')}.m4a';
     _currentChunkPath = '$_recordingsBasePath/$chunkFileName';
 
     const config = RecordConfig(
@@ -237,12 +241,14 @@ class AudioRecorderService {
         final file = File(_currentChunkPath!);
         if (await file.exists()) {
           final sizeBytes = await file.length();
-          _eventController.add(RecordingEvent.chunkCompleted(
-            chunkIndex: _currentChunkIndex,
-            filePath: _currentChunkPath!,
-            duration: _chunkDuration,
-            sizeBytes: sizeBytes,
-          ));
+          _eventController.add(
+            RecordingEvent.chunkCompleted(
+              chunkIndex: _currentChunkIndex,
+              filePath: _currentChunkPath!,
+              duration: _chunkDuration,
+              sizeBytes: sizeBytes,
+            ),
+          );
         }
       }
       return path;
@@ -288,9 +294,11 @@ class AudioRecorderService {
     // Check storage before starting new chunk
     final storageStatus = await _storageMonitor.checkStorage();
     if (!storageStatus.canRecord) {
-      _eventController.add(const RecordingEvent.error(
-        'Storage full. Recording stopped to prevent data loss.',
-      ));
+      _eventController.add(
+        const RecordingEvent.error(
+          'Storage full. Recording stopped to prevent data loss.',
+        ),
+      );
       await stopRecording();
       return;
     }
@@ -302,10 +310,12 @@ class AudioRecorderService {
     );
     if (newChunkDuration != _chunkDurationMinutes) {
       _chunkDurationMinutes = newChunkDuration;
-      _eventController.add(RecordingEvent.chunkDurationAdjusted(
-        newDurationMinutes: _chunkDurationMinutes,
-        reason: 'Low storage — chunks shortened',
-      ));
+      _eventController.add(
+        RecordingEvent.chunkDurationAdjusted(
+          newDurationMinutes: _chunkDurationMinutes,
+          reason: 'Low storage — chunks shortened',
+        ),
+      );
     }
 
     // Start next chunk
@@ -316,9 +326,9 @@ class AudioRecorderService {
 
   /// Monitor audio amplitude for waveform display.
   void _startAmplitudeMonitoring() {
-    _recorder
-        .onAmplitudeChanged(const Duration(milliseconds: 100))
-        .listen((amp) {
+    _recorder.onAmplitudeChanged(const Duration(milliseconds: 100)).listen((
+      amp,
+    ) {
       if (_isRecording && !_isPaused) {
         // Normalize amplitude from dB to 0.0-1.0
         // amp.current is in dBFS (typically -160 to 0)
@@ -348,9 +358,8 @@ sealed class RecordingEvent {
     required int chunkDurationMinutes,
   }) = RecordingStartedEvent;
 
-  const factory RecordingEvent.stopped({
-    required RecordingResult result,
-  }) = RecordingStoppedEvent;
+  const factory RecordingEvent.stopped({required RecordingResult result}) =
+      RecordingStoppedEvent;
 
   const factory RecordingEvent.paused() = RecordingPausedEvent;
 

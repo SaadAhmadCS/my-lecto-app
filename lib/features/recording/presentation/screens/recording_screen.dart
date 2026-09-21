@@ -5,7 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../../subjects/data/subject_dao.dart';
+import '../widgets/record_subject_sheet.dart';
+import '../widgets/recording_mini_bar.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -31,21 +32,69 @@ class RecordingScreen extends StatelessWidget {
   /// subject without showing the subject picker.
   final String? initialSubjectId;
 
-  const RecordingScreen({super.key, this.initialSubjectId});
+  /// Start recording as soon as the screen opens. Needs [initialSubjectId].
+  final bool autoStart;
+
+  const RecordingScreen({
+    super.key,
+    this.initialSubjectId,
+    this.autoStart = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => RecordingBloc(
-        recorderService: context.read(),
-        storageMonitor: context.read(),
-        photoService: context.read(),
-        permissionService: context.read(),
-        recordingDao: context.read(),
-      ),
+    // The RecordingBloc is app-wide (see main.dart), so leaving this screen
+    // does not end the recording.
+    return _SessionLifecycle(
+      autoStartSubjectId: autoStart ? initialSubjectId : null,
       child: _RecordingScreenBody(initialSubjectId: initialSubjectId),
     );
   }
+}
+
+/// Clears a finished session on the way in and out, and starts a new one
+/// when the screen was opened with a subject already chosen.
+class _SessionLifecycle extends StatefulWidget {
+  final String? autoStartSubjectId;
+  final Widget child;
+
+  const _SessionLifecycle({
+    required this.autoStartSubjectId,
+    required this.child,
+  });
+
+  @override
+  State<_SessionLifecycle> createState() => _SessionLifecycleState();
+}
+
+class _SessionLifecycleState extends State<_SessionLifecycle> {
+  late final RecordingBloc _bloc = context.read<RecordingBloc>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Deferred: changing it mid-build would rebuild the pill while the tree
+    // is locked.
+    Future.microtask(() => RecordingMiniBar.recorderScreensOpen.value++);
+    // A saved or failed session from last time is not this one.
+    _bloc.add(const ResetRecordingEvent());
+
+    final subjectId = widget.autoStartSubjectId;
+    if (subjectId != null && !_bloc.isActive) {
+      _bloc.add(StartRecordingEvent(subjectId: subjectId));
+    }
+  }
+
+  @override
+  void dispose() {
+    Future.microtask(() => RecordingMiniBar.recorderScreensOpen.value--);
+    // Leaves a live recording alone; only a finished one is cleared.
+    _bloc.add(const ResetRecordingEvent());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _RecordingScreenBody extends StatelessWidget {
@@ -62,24 +111,24 @@ class _RecordingScreenBody extends StatelessWidget {
         elevation: 0,
         leading: BlocBuilder<RecordingBloc, RecordingBlocState>(
           builder: (context, state) {
+            // Mid-recording this minimises rather than closes: the recording
+            // carries on and the pill at the bottom brings you back.
+            final active =
+                state is RecordingInProgress || state is RecordingPaused;
             return IconButton(
-              icon: const Icon(Icons.close_rounded),
-              onPressed: () {
-                if (state is RecordingInProgress || state is RecordingPaused) {
-                  _showExitConfirmation(context);
-                } else {
-                  Navigator.of(context).pop();
-                }
-              },
+              icon: Icon(
+                active
+                    ? Icons.keyboard_arrow_down_rounded
+                    : Icons.close_rounded,
+              ),
+              tooltip: active ? 'Keep recording in the background' : 'Close',
+              onPressed: () => Navigator.of(context).pop(),
             );
           },
         ),
         title: const Text(
           'Record Lecture',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
       ),
@@ -200,7 +249,7 @@ class _RecordingScreenBody extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: StorageStatusBar(
               availableMB: state.availableStorageMB,
-              isStorageLow: state.isStorageLow,
+              isStorageLow: state.isStorageLow,
               completedChunks: state.completedChunks,
             ),
           ),
@@ -239,9 +288,7 @@ class _RecordingScreenBody extends StatelessWidget {
               isRecording: true,
               isPaused: false,
               onRecordPause: () {
-                context
-                    .read<RecordingBloc>()
-                    .add(const PauseRecordingEvent());
+                context.read<RecordingBloc>().add(const PauseRecordingEvent());
               },
               onStop: () => _showStopConfirmation(context),
               onCapturePhoto: () => _capturePhoto(context),
@@ -254,7 +301,10 @@ class _RecordingScreenBody extends StatelessWidget {
           if (state.isNearMaxDuration)
             Container(
               margin: const EdgeInsets.fromLTRB(
-                AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm,
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.sm,
               ),
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
@@ -263,8 +313,11 @@ class _RecordingScreenBody extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.timer_off_outlined,
-                      color: AppColors.warning, size: 18),
+                  const Icon(
+                    Icons.timer_off_outlined,
+                    color: AppColors.warning,
+                    size: 18,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
@@ -291,8 +344,11 @@ class _RecordingScreenBody extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      color: AppColors.warning, size: 18),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.warning,
+                    size: 18,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
@@ -350,9 +406,7 @@ class _RecordingScreenBody extends StatelessWidget {
               isRecording: true,
               isPaused: true,
               onRecordPause: () {
-                context
-                    .read<RecordingBloc>()
-                    .add(const ResumeRecordingEvent());
+                context.read<RecordingBloc>().add(const ResumeRecordingEvent());
               },
               onStop: () => _showStopConfirmation(context),
               onCapturePhoto: () => _capturePhoto(context),
@@ -417,9 +471,7 @@ class _RecordingScreenBody extends StatelessWidget {
                 Navigator.of(context).pop();
                 // push, not go: go replaces the stack, which left the detail
                 // screen with nothing to pop back to.
-                context.push(
-                  '/recording/${state.recordingId}?title=Recording',
-                );
+                context.push('/recording/${state.recordingId}?title=Recording');
               },
               // Nothing is being generated in the background, so the next step
               // is the share.
@@ -491,174 +543,17 @@ class _RecordingScreenBody extends StatelessWidget {
   }
 
   /// Start in the preselected subject, or ask which subject to use.
-  void _beginRecording(BuildContext context) {
-    final subjectId = initialSubjectId;
-    if (subjectId != null) {
-      _startRecordingWithSubject(context, subjectId);
-    } else {
-      _showSubjectPicker(context);
-    }
-  }
-
-  /// Show subject picker bottom sheet before recording starts.
-  void _showSubjectPicker(BuildContext outerContext) {
-    final subjectDao = outerContext.read<SubjectDao>();
-
-    showModalBottomSheet(
-      context: outerContext,
-      backgroundColor: AppColors.darkSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) {
-        return FutureBuilder<List<Map<String, dynamic>>>(
-          future: subjectDao.listSubjects(),
-          builder: (ctx, snapshot) {
-            return Padding(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.darkBorder,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  Text(
-                    'Record for which subject?',
-                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(height: AppSpacing.base),
-
-                  // Quick Record option
-                  ListTile(
-                    leading: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.bolt_rounded,
-                          color: AppColors.primary, size: 20),
-                    ),
-                    title: const Text('Quick Record'),
-                    subtitle: Text(
-                      'Save to "Unsorted" — organize later',
-                      style: TextStyle(
-                        color: AppColors.textTertiaryDark,
-                        fontSize: 12,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.of(ctx).pop();
-                      _startRecordingWithSubject(outerContext, 'unsorted');
-                    },
-                  ),
-
-                  const Divider(color: AppColors.darkBorder),
-
-                  // Subject list
-                  if (snapshot.connectionState == ConnectionState.waiting)
-                    const Padding(
-                      padding: EdgeInsets.all(AppSpacing.xl),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.primary),
-                      ),
-                    )
-                  else if (snapshot.hasError)
-                    Padding(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      child: Center(
-                        child: Text(
-                          'Could not load subjects.\nTap "Quick Record" above.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textSecondaryDark),
-                        ),
-                      ),
-                    )
-                  else ...[
-                    ..._buildSubjectList(ctx, outerContext, snapshot.data!),
-                  ],
-
-                  const SizedBox(height: AppSpacing.base),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  List<Widget> _buildSubjectList(
-    BuildContext sheetContext,
-    BuildContext outerContext,
-    List<Map<String, dynamic>> subjects,
-  ) {
-
-    if (subjects.isEmpty) {
-      return [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
-          child: Center(
-            child: Text(
-              'No subjects yet — use Quick Record or create one in Subjects tab.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13),
-            ),
-          ),
-        ),
-      ];
-    }
-
-    return subjects.map((s) {
-      final name = s['name'] as String? ?? 'Untitled';
-      final id = s['id'] as String;
-      final colorStr = s['color'] as String? ?? '#6366F1';
-
-      Color cardColor;
-      try {
-        cardColor = Color(int.parse(colorStr.replaceFirst('#', '0xFF')));
-      } catch (_) {
-        cardColor = AppColors.primary;
-      }
-
-      return ListTile(
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: cardColor.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(Icons.folder_rounded, color: cardColor, size: 20),
-        ),
-        title: Text(name),
-        onTap: () {
-          Navigator.of(sheetContext).pop();
-          _startRecordingWithSubject(outerContext, id);
-        },
-      );
-    }).toList();
+  Future<void> _beginRecording(BuildContext context) async {
+    final subjectId =
+        initialSubjectId ?? await RecordSubjectSheet.show(context);
+    if (subjectId == null || !context.mounted) return;
+    _startRecordingWithSubject(context, subjectId);
   }
 
   void _startRecordingWithSubject(BuildContext context, String subjectId) {
     context.read<RecordingBloc>().add(
-          StartRecordingEvent(subjectId: subjectId),
-        );
+      StartRecordingEvent(subjectId: subjectId),
+    );
   }
 
   /// Capture a photo using the camera.
@@ -672,8 +567,8 @@ class _RecordingScreenBody extends StatelessWidget {
 
     if (image != null && context.mounted) {
       context.read<RecordingBloc>().add(
-            CapturePhotoEvent(photoFilePath: image.path),
-          );
+        CapturePhotoEvent(photoFilePath: image.path),
+      );
     }
   }
 
@@ -724,7 +619,9 @@ class _RecordingScreenBody extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(sheetContext).pop(),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.textTertiaryDark),
+                        side: const BorderSide(
+                          color: AppColors.textTertiaryDark,
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text('Continue'),
@@ -736,8 +633,8 @@ class _RecordingScreenBody extends StatelessWidget {
                       onPressed: () {
                         Navigator.of(sheetContext).pop();
                         context.read<RecordingBloc>().add(
-                              const StopRecordingEvent(),
-                            );
+                          const StopRecordingEvent(),
+                        );
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.recordingRed,
@@ -751,40 +648,6 @@ class _RecordingScreenBody extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  /// Show exit confirmation when recording is active.
-  void _showExitConfirmation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.darkSurface,
-          title: const Text('Recording in progress'),
-          content: const Text(
-            'Do you want to stop the recording and exit?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context
-                    .read<RecordingBloc>()
-                    .add(const StopRecordingEvent());
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.error,
-              ),
-              child: const Text('Stop & Exit'),
-            ),
-          ],
         );
       },
     );

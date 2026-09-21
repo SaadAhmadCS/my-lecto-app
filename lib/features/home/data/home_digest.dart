@@ -58,6 +58,10 @@ class HomeTask {
   /// themselves carry no date — this is the best available signal.
   final DateTime? dueAt;
 
+  /// Where the checklist line sits in the lecture's notes, so it can be ticked
+  /// from outside the notes screen.
+  final int? lineIndex;
+
   const HomeTask({
     required this.text,
     required this.done,
@@ -65,6 +69,7 @@ class HomeTask {
     required this.recordingTitle,
     this.subjectName,
     this.dueAt,
+    this.lineIndex,
   });
 
   bool get isDueToday {
@@ -207,6 +212,7 @@ class HomeDigestBuilder {
             recordingTitle: title,
             subjectName: subject,
             dueAt: task.done ? null : nearest,
+            lineIndex: task.lineIndex,
           ));
         }
 
@@ -235,6 +241,35 @@ class HomeDigestBuilder {
       debugPrint('HomeDigest: could not build: $e');
       return const HomeDigest();
     }
+  }
+
+  /// Tick or untick [task] in its lecture's notes. Returns whether it changed.
+  ///
+  /// The notes may have been re-pasted since the task was read, so the line is
+  /// only rewritten if it is still the same task.
+  Future<bool> toggleTask(HomeTask task) async {
+    final lineIndex = task.lineIndex;
+    if (lineIndex == null) return false;
+
+    final notes = await _dao.getNotes(task.recordingId);
+    if (notes == null) return false;
+
+    final lines = notes.notesMarkdown.split('\n');
+    if (lineIndex >= lines.length || !lines[lineIndex].contains(task.text)) {
+      return false;
+    }
+
+    final updated = NotesParser.toggleTask(
+      notes.notesMarkdown,
+      NoteTask(text: task.text, done: task.done, lineIndex: lineIndex),
+    );
+    if (updated == notes.notesMarkdown) return false;
+
+    await _dao.updateNotesMarkdown(
+      id: task.recordingId,
+      notesMarkdown: updated,
+    );
+    return true;
   }
 
   static DateTime? _nearestDate(List<NoteDeadline> deadlines) {

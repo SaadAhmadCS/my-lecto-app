@@ -25,9 +25,7 @@ class StorageMonitorService {
   Stream<StorageStatus> get statusStream => _statusController.stream;
 
   /// Start periodic storage monitoring.
-  void startMonitoring({
-    Duration interval = const Duration(seconds: 30),
-  }) {
+  void startMonitoring({Duration interval = const Duration(seconds: 30)}) {
     _pollingTimer?.cancel();
     _pollingTimer = Timer.periodic(interval, (_) async {
       final status = await checkStorage();
@@ -65,8 +63,8 @@ class StorageMonitorService {
       return StorageStatus(
         availableMB: freeMB,
         level: level,
-        estimatedMinutesRemaining:
-            (freeMB * 0.8 / mbPerMinute).floor(), // 80% safety margin
+        estimatedMinutesRemaining: (freeMB * 0.8 / mbPerMinute)
+            .floor(), // 80% safety margin
       );
     } catch (e) {
       return const StorageStatus(
@@ -131,10 +129,7 @@ class StorageMonitorService {
       // On Android, we can use the disk space from the file system
       // For a more accurate reading, we check the partition
       if (Platform.isAndroid) {
-        final statFs = await Process.run(
-          'df',
-          ['-k', path],
-        );
+        final statFs = await Process.run('df', ['-k', path]);
         if (statFs.exitCode == 0) {
           final lines = (statFs.stdout as String).split('\n');
           if (lines.length >= 2) {
@@ -193,9 +188,9 @@ class StorageStatus {
 
 /// Storage level classification.
 enum StorageLevel {
-  normal,   // > 500MB
-  warning,  // 100-500MB
+  normal, // > 500MB
+  warning, // 100-500MB
   critical, // 20-100MB
-  full,     // < 20MB
-  unknown,  // Could not determine
+  full, // < 20MB
+  unknown, // Could not determine
 }

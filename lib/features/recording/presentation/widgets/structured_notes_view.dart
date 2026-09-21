@@ -40,15 +40,12 @@ class StructuredNotesView extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.base),
       children: [
         if (notes.summary != null) ...[
-          _SectionHeader(
-            icon: Icons.subject_rounded,
-            label: 'Summary',
-          ),
+          _SectionHeader(icon: Icons.subject_rounded, label: 'Summary'),
           SelectableText(
             notes.summary!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  height: 1.55,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.55),
           ),
           const SizedBox(height: AppSpacing.lg),
         ],
@@ -73,35 +70,30 @@ class StructuredNotesView extends StatelessWidget {
           _SectionHeader(
             icon: Icons.checklist_rounded,
             label: 'Tasks',
-            trailing: '${notes.tasks.where((t) => t.done).length}'
+            trailing:
+                '${notes.tasks.where((t) => t.done).length}'
                 '/${notes.tasks.length}',
           ),
           ...notes.tasks.map(
             (task) => _TaskTile(
               task: task,
-              onToggle: onToggleTask == null
-                  ? null
-                  : () => onToggleTask!(task),
+              onToggle: onToggleTask == null ? null : () => onToggleTask!(task),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
         ],
         if (notes.deadlines.isNotEmpty) ...[
-          _SectionHeader(
-            icon: Icons.event_rounded,
-            label: 'Deadlines',
+          _SectionHeader(icon: Icons.event_rounded, label: 'Deadlines'),
+          ...notes.deadlines.map(
+            (deadline) => _DeadlineTile(deadline: deadline),
           ),
-          ...notes.deadlines.map((deadline) => _DeadlineTile(deadline: deadline)),
           const SizedBox(height: AppSpacing.lg),
         ],
         // Whatever the AI wrote under headings we don't know. Rendered last so
         // nothing the student received is ever hidden from them.
         for (final section in notes.extraSections) ...[
           if (section.title.isNotEmpty)
-            _SectionHeader(
-              icon: Icons.notes_rounded,
-              label: section.title,
-            ),
+            _SectionHeader(icon: Icons.notes_rounded, label: section.title),
           if (section.body.isNotEmpty)
             MarkdownBody(
               data: section.body,
@@ -136,17 +128,17 @@ class _SectionHeader extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Text(
             label,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
           if (trailing != null) ...[
             const Spacer(),
             Text(
               trailing!,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
+                color: Theme.of(context).hintColor,
+              ),
             ),
           ],
         ],
@@ -164,10 +156,10 @@ class _TaskTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-          height: 1.4,
-          decoration: task.done ? TextDecoration.lineThrough : null,
-          color: task.done ? Theme.of(context).hintColor : null,
-        );
+      height: 1.4,
+      decoration: task.done ? TextDecoration.lineThrough : null,
+      color: task.done ? Theme.of(context).hintColor : null,
+    );
 
     return InkWell(
       onTap: onToggle,
@@ -227,18 +219,18 @@ class _DeadlineTile extends StatelessWidget {
             child: Text(
               _label(date, deadline.rawDate),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: overdue ? AppColors.error : AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: overdue ? AppColors.error : AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               deadline.description,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    height: 1.4,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(height: 1.4),
             ),
           ),
         ],
@@ -249,8 +241,18 @@ class _DeadlineTile extends StatelessWidget {
   static String _label(DateTime? date, String rawDate) {
     if (date == null) return rawDate.isEmpty ? 'Date TBC' : rawDate;
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${date.day} ${months[date.month - 1]}';
   }

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="bookCoverGrad" x1="40" y1="60" x2="160" y2="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#523996"/>
+      <stop offset="100%" stop-color="#3d2678"/>
+    </linearGradient>
+    <linearGradient id="sheetGrad" x1="60" y1="30" x2="140" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f5efff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient glow backdrop -->
+  <ellipse cx="100" cy="115" rx="68" ry="46" fill="#584396" fill-opacity="0.12"/>
+
+  <!-- Back subject notebook / binder tilted -->
+  <rect x="76" y="40" width="76" height="106" rx="12" transform="rotate(10 76 40)" fill="#7861be" fill-opacity="0.4"/>
+
+  <!-- Tilted study notes with colored tag header -->
+  <rect x="62" y="38" width="76" height="88" rx="8" fill="url(#sheetGrad)"/>
+  <!-- Crisp lined text notes peeking out -->
+  <rect x="74" y="50" width="34" height="4.5" rx="2.25" fill="#584396" fill-opacity="0.5"/>
+  <rect x="74" y="60" width="52" height="3" rx="1.5" fill="#584396" fill-opacity="0.3"/>
+  <rect x="74" y="68" width="44" height="3" rx="1.5" fill="#584396" fill-opacity="0.25"/>
+
+  <!-- Primary Foreground Subject Binder / Folio -->
+  <rect x="42" y="68" width="116" height="82" rx="14" fill="url(#bookCoverGrad)"/>
+
+  <!-- Spine embossing accent -->
+  <rect x="42" y="68" width="14" height="82" rx="4" fill="#321e64" fill-opacity="0.6"/>
+  <line x1="56" y1="68" x2="56" y2="150" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.2"/>
+
+  <!-- Neat color-coded subject category tab chips with subtle micro-icons -->
+  <rect x="68" y="104" width="22" height="18" rx="6" fill="#f96d38"/>
+  <rect x="96" y="104" width="22" height="18" rx="6" fill="#1fc188"/>
+  <rect x="124" y="104" width="22" height="18" rx="6" fill="#3b82f6"/>
+
+  <!-- Tiny pill markers on tabs -->
+  <circle cx="79" cy="113" r="2.5" fill="#ffffff"/>
+  <circle cx="107" cy="113" r="2.5" fill="#ffffff"/>
+  <circle cx="135" cy="113" r="2.5" fill="#ffffff"/>
+
+  <!-- Academic intelligence sparkles -->
+  <path d="M152 38L154.5 43.5L160 46L154.5 48.5L152 54L149.5 48.5L144 46L149.5 43.5L152 38Z" fill="#7861be"/>
+  <path d="M38 52L39.5 55.5L43 57L39.5 58.5L38 62L36.5 58.5L33 57L36.5 55.5L38 52Z" fill="#f96d38" fill-opacity="0.8"/>
+</svg>

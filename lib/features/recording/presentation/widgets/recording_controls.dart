@@ -40,10 +40,7 @@ class _RecordingControlsState extends State<RecordingControls>
       duration: const Duration(milliseconds: 1200),
     );
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
 
@@ -125,8 +122,8 @@ class _RecordingControlsState extends State<RecordingControls>
                 widget.isPaused
                     ? Icons.mic_rounded
                     : (widget.isRecording
-                        ? Icons.pause_rounded
-                        : Icons.mic_rounded),
+                          ? Icons.pause_rounded
+                          : Icons.mic_rounded),
                 color: Colors.white,
                 size: 36,
               ),

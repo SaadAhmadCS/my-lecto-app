@@ -90,7 +90,9 @@ class PhotoCaptureService {
 
   /// Delete all photos for a recording from disk.
   Future<void> deletePhotosForRecording(String recordingId) async {
-    final toDelete = _photos.where((p) => p.recordingId == recordingId).toList();
+    final toDelete = _photos
+        .where((p) => p.recordingId == recordingId)
+        .toList();
     for (final photo in toDelete) {
       try {
         final file = File(photo.filePath);

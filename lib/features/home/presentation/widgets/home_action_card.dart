@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
-
-import '../../../../core/theme/app_spacing.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// One tile in the dashboard's 2×2 grid.
 ///
-/// The icon sits large and low-contrast in the corner, so the card reads as a
+/// A spot illustration sits in the bottom-right corner, so the card reads as a
 /// picture first and a button second.
 class HomeActionCard extends StatelessWidget {
   final String title;
   final String subtitle;
-  final IconData icon;
+
+  /// SVG asset drawn in the corner.
+  final String illustration;
   final Color background;
+
+  /// Overrides [background] — the Record tile is a coral gradient.
+  final Gradient? gradient;
   final Color foreground;
   final VoidCallback onTap;
 
@@ -18,65 +22,70 @@ class HomeActionCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
-    required this.icon,
+    required this.illustration,
     required this.background,
     required this.foreground,
     required this.onTap,
+    this.gradient,
   });
+
+  static const double _radius = 21;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-      child: Container(
-        height: 118,
-        padding: const EdgeInsets.all(AppSpacing.base),
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        height: 120,
         decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          color: gradient == null ? background : null,
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(_radius),
         ),
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            Positioned(
-              right: -10,
-              bottom: -12,
-              child: Icon(
-                icon,
-                size: 68,
-                color: foreground.withValues(alpha: 0.20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(_radius),
+          child: Stack(
+            children: [
+              Positioned(
+                right: 6,
+                bottom: 4,
+                child: SvgPicture.asset(
+                  illustration,
+                  width: 72,
+                  height: 72,
+                ),
               ),
-            ),
-            // Kept clear of the icon rather than sitting on top of it.
-            Padding(
-              padding: const EdgeInsets.only(right: 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: foreground,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: foreground.withValues(alpha: 0.78),
-                          fontWeight: FontWeight.w500,
-                        ),
-                  ),
-                ],
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: foreground,
+                            fontWeight: FontWeight.w900,
+                            height: 1.2,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: foreground.withValues(alpha: 0.75),
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

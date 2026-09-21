@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="micHalo" x1="100" y1="20" x2="100" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="micBody" x1="80" y1="40" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#fff1eb"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient glowing pulse rings -->
+  <circle cx="100" cy="92" r="64" fill="url(#micHalo)"/>
+  
+  <!-- Outer radiating soundwaves with varying rhythmic heights -->
+  <path d="M42 78C38 83 36 88 36 94C36 100 38 105 42 110" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-opacity="0.75"/>
+  <path d="M26 68C20 76 16 85 16 94C16 103 20 112 26 120" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.4"/>
+  <path d="M158 78C162 83 164 88 164 94C164 100 162 105 158 110" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-opacity="0.75"/>
+  <path d="M174 68C180 76 184 85 184 94C184 103 180 112 174 120" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.4"/>
+
+  <!-- Dynamic audio waveform rhythm bars behind the mic -->
+  <rect x="54" y="80" width="4" height="28" rx="2" fill="#ffffff" fill-opacity="0.6"/>
+  <rect x="62" y="70" width="4" height="48" rx="2" fill="#ffffff" fill-opacity="0.7"/>
+  <rect x="134" y="70" width="4" height="48" rx="2" fill="#ffffff" fill-opacity="0.7"/>
+  <rect x="142" y="80" width="4" height="28" rx="2" fill="#ffffff" fill-opacity="0.6"/>
+
+  <!-- Studio Mic Capsule Body -->
+  <rect x="78" y="42" width="44" height="74" rx="22" fill="url(#micBody)"/>
+  
+  <!-- Microphone Grille Mesh Band (Upper) -->
+  <path d="M78 64H122" stroke="#f96d38" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.7"/>
+  <path d="M82 54H118" stroke="#f96d38" stroke-width="2" stroke-linecap="round" stroke-opacity="0.5"/>
+  <path d="M80 74H120" stroke="#f96d38" stroke-width="2" stroke-linecap="round" stroke-opacity="0.5"/>
+  <rect x="90" y="86" width="20" height="12" rx="6" fill="#f96d38" fill-opacity="0.15"/>
+  <!-- Recording Live Indicator Light with subtle glow -->
+  <circle cx="100" cy="92" r="3.5" fill="#f96d38"/>
+
+  <!-- Sleek Modern U-Mount Shockmount -->
+  <path d="M66 74V96C66 114.778 81.222 130 100 130C118.778 130 134 114.778 134 96V74" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Base Stand Pole and Pedestal Foot -->
+  <path d="M100 130V156" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M72 156H128" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+  
+  <!-- Sparkles of AI intelligence -->
+  <path d="M146 36L148.5 42L155 44.5L148.5 47L146 53L143.5 47L137 44.5L143.5 42L146 36Z" fill="#ffffff"/>
+  <circle cx="50" cy="46" r="2.5" fill="#ffffff" fill-opacity="0.8"/>
+</svg>

@@ -51,12 +51,12 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
     required PhotoCaptureService photoService,
     required PermissionService permissionService,
     required RecordingDao recordingDao,
-  })  : _recorderService = recorderService,
-        _storageMonitor = storageMonitor,
-        _photoService = photoService,
-        _permissionService = permissionService,
-        _recordingDao = recordingDao,
-        super(const RecordingIdle()) {
+  }) : _recorderService = recorderService,
+       _storageMonitor = storageMonitor,
+       _photoService = photoService,
+       _permissionService = permissionService,
+       _recordingDao = recordingDao,
+       super(const RecordingIdle()) {
     on<StartRecordingEvent>(_onStartRecording);
     on<PauseRecordingEvent>(_onPauseRecording);
     on<ResumeRecordingEvent>(_onResumeRecording);
@@ -68,7 +68,20 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
     on<StorageStatusChangedEvent>(_onStorageStatusChanged);
     on<MaxDurationWarningBlocEvent>(_onMaxDurationWarning);
     on<RecordingErrorOccurredEvent>(_onError);
+    on<ResetRecordingEvent>(_onReset);
   }
+
+  void _onReset(ResetRecordingEvent event, Emitter<RecordingBlocState> emit) {
+    if (state is RecordingCompleted || state is RecordingError) {
+      emit(const RecordingIdle());
+    }
+  }
+
+  /// Whether a session is under way, paused or not.
+  bool get isActive =>
+      state is RecordingInProgress ||
+      state is RecordingPaused ||
+      state is RecordingRequestingPermissions;
 
   Future<void> _onStartRecording(
     StartRecordingEvent event,
@@ -79,16 +92,19 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
 
     final hasMic = await _permissionService.requestMicrophone();
     if (!hasMic) {
-      emit(const RecordingError(
-        message: 'Microphone permission is required to record lectures.',
-        canRetry: true,
-      ));
+      emit(
+        const RecordingError(
+          message: 'Microphone permission is required to record lectures.',
+          canRetry: true,
+        ),
+      );
       return;
     }
 
     // Generate recording ID and title
     final recordingId = _uuid.v4();
-    _currentTitle = event.title ??
+    _currentTitle =
+        event.title ??
         'Recording ${DateTime.now().day}/${DateTime.now().month} '
             '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}';
 
@@ -119,19 +135,23 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
     _storageSub?.cancel();
     _storageMonitor.startMonitoring();
     _storageSub = _storageMonitor.statusStream.listen((status) {
-      add(StorageStatusChangedEvent(
-        availableMB: status.availableMB,
-        isLow: status.isLow,
-      ));
+      add(
+        StorageStatusChangedEvent(
+          availableMB: status.availableMB,
+          isLow: status.isLow,
+        ),
+      );
     });
 
     try {
       await _recorderService.startRecording(recordingId);
     } catch (e) {
-      emit(RecordingError(
-        message: ErrorMessages.from(e, action: 'start recording'),
-        canRetry: true,
-      ));
+      emit(
+        RecordingError(
+          message: ErrorMessages.from(e, action: 'start recording'),
+          canRetry: true,
+        ),
+      );
       return;
     }
 
@@ -139,6 +159,16 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
     if (!_recorderService.isRecording) return;
 
     emit(RecordingInProgress(recordingId: recordingId));
+
+    // The monitor's first reading usually lands before this state exists and
+    // is dropped, which left the bar at "Unknown" until the next poll 30s on.
+    final storage = await _storageMonitor.checkStorage();
+    add(
+      StorageStatusChangedEvent(
+        availableMB: storage.availableMB,
+        isLow: storage.isLow,
+      ),
+    );
   }
 
   Future<void> _onPauseRecording(
@@ -150,13 +180,15 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
 
     await _recorderService.pauseRecording();
 
-    emit(RecordingPaused(
-      recordingId: current.recordingId,
-      totalDuration: current.totalDuration,
-      completedChunks: _completedChunks,
-      photos: current.photos,
-      availableStorageMB: current.availableStorageMB,
-    ));
+    emit(
+      RecordingPaused(
+        recordingId: current.recordingId,
+        totalDuration: current.totalDuration,
+        completedChunks: _completedChunks,
+        photos: current.photos,
+        availableStorageMB: current.availableStorageMB,
+      ),
+    );
   }
 
   Future<void> _onResumeRecording(
@@ -168,14 +200,16 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
 
     await _recorderService.resumeRecording();
 
-    emit(RecordingInProgress(
-      recordingId: current.recordingId,
-      totalDuration: current.totalDuration,
-      completedChunks: current.completedChunks,
-      photos: current.photos,
-      availableStorageMB: current.availableStorageMB,
-      isNearMaxDuration: _isNearMaxDuration,
-    ));
+    emit(
+      RecordingInProgress(
+        recordingId: current.recordingId,
+        totalDuration: current.totalDuration,
+        completedChunks: current.completedChunks,
+        photos: current.photos,
+        availableStorageMB: current.availableStorageMB,
+        isNearMaxDuration: _isNearMaxDuration,
+      ),
+    );
   }
 
   Future<void> _onStopRecording(
@@ -183,7 +217,20 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
     Emitter<RecordingBlocState> emit,
   ) async {
     if (_getCurrentRecordingId() == null) return;
+    // Stop can arrive twice — the Stop button and the 8-hour limit, or a
+    // double tap — and the second must not run the stop flow again.
+    if (_isStopping) return;
+    _isStopping = true;
+    try {
+      await _stop(emit);
+    } finally {
+      _isStopping = false;
+    }
+  }
 
+  bool _isStopping = false;
+
+  Future<void> _stop(Emitter<RecordingBlocState> emit) async {
     // Stop recording — this saves the final chunk file
     final result = await _recorderService.stopRecording();
 
@@ -207,18 +254,24 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
     if (_completedChunks < result.totalChunks) {
       // The final chunk file path follows the naming pattern from AudioRecorderService
       final lastChunkIndex = result.totalChunks - 1;
-      final chunkFileName = 'chunk_${lastChunkIndex.toString().padLeft(3, '0')}.m4a';
+      final chunkFileName =
+          'chunk_${lastChunkIndex.toString().padLeft(3, '0')}.m4a';
       final chunkPath = '${result.recordingPath}/$chunkFileName';
 
       final file = File(chunkPath);
       if (await file.exists()) {
-        debugPrint('RecordingBloc: Manually enqueuing final chunk $lastChunkIndex');
+        debugPrint(
+          'RecordingBloc: Manually enqueuing final chunk $lastChunkIndex',
+        );
         _completedChunks++;
         await _saveChunk(
           recordingId: result.recordingId,
           chunkIndex: lastChunkIndex,
           filePath: chunkPath,
-          durationMs: (durationMs - _reportedChunkDurationMs).clamp(0, durationMs),
+          durationMs: (durationMs - _reportedChunkDurationMs).clamp(
+            0,
+            durationMs,
+          ),
           sizeBytes: await file.length(),
         );
       }
@@ -235,14 +288,16 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
       debugPrint('RecordingBloc: Failed to update recording in DB: $e');
     }
 
-    emit(RecordingCompleted(
-      recordingId: result.recordingId,
-      totalDuration: result.totalDuration,
-      totalChunks: result.totalChunks,
-      totalPhotos: _photoService.photos.length,
-      recordingPath: result.recordingPath,
-      stoppedAtMaxDuration: _stoppedAtMaxDuration,
-    ));
+    emit(
+      RecordingCompleted(
+        recordingId: result.recordingId,
+        totalDuration: result.totalDuration,
+        totalChunks: result.totalChunks,
+        totalPhotos: _photoService.photos.length,
+        recordingPath: result.recordingPath,
+        stoppedAtMaxDuration: _stoppedAtMaxDuration,
+      ),
+    );
   }
 
   Future<void> _onCapturePhoto(
@@ -275,9 +330,7 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
         debugPrint('RecordingBloc: Failed to persist photo: $e');
       }
 
-      emit(current.copyWith(
-        photos: [...current.photos, photo],
-      ));
+      emit(current.copyWith(photos: [...current.photos, photo]));
     } catch (e) {
       // Don't interrupt recording for a photo error
       debugPrint('RecordingBloc: Photo capture error: $e');
@@ -299,11 +352,13 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
   ) {
     if (state is! RecordingInProgress) return;
     final current = state as RecordingInProgress;
-    emit(current.copyWith(
-      totalDuration: event.totalDuration,
-      chunkDuration: event.chunkDuration,
-      chunkIndex: event.chunkIndex,
-    ));
+    emit(
+      current.copyWith(
+        totalDuration: event.totalDuration,
+        chunkDuration: event.chunkDuration,
+        chunkIndex: event.chunkIndex,
+      ),
+    );
   }
 
   Future<void> _onChunkCompleted(
@@ -325,9 +380,11 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
     );
 
     if (state is RecordingInProgress) {
-      emit((state as RecordingInProgress).copyWith(
-        completedChunks: _completedChunks,
-      ));
+      emit(
+        (state as RecordingInProgress).copyWith(
+          completedChunks: _completedChunks,
+        ),
+      );
     }
   }
 
@@ -361,10 +418,12 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
   ) {
     if (state is! RecordingInProgress) return;
     final current = state as RecordingInProgress;
-    emit(current.copyWith(
-      availableStorageMB: event.availableMB,
-      isStorageLow: event.isLow,
-    ));
+    emit(
+      current.copyWith(
+        availableStorageMB: event.availableMB,
+        isStorageLow: event.isLow,
+      ),
+    );
   }
 
   void _onMaxDurationWarning(
@@ -390,27 +449,31 @@ class RecordingBloc extends Bloc<RecordingBlocEvent, RecordingBlocState> {
       case AmplitudeEvent(:final normalizedAmplitude):
         add(AmplitudeUpdatedEvent(normalizedAmplitude));
       case DurationUpdateEvent(
-          :final totalDuration,
-          :final chunkDuration,
-          :final chunkIndex
-        ):
-        add(DurationTickEvent(
-          totalDuration: totalDuration,
-          chunkDuration: chunkDuration,
-          chunkIndex: chunkIndex,
-        ));
+        :final totalDuration,
+        :final chunkDuration,
+        :final chunkIndex,
+      ):
+        add(
+          DurationTickEvent(
+            totalDuration: totalDuration,
+            chunkDuration: chunkDuration,
+            chunkIndex: chunkIndex,
+          ),
+        );
       case ChunkCompletedEvent(
-          :final chunkIndex,
-          :final filePath,
-          :final duration,
-          :final sizeBytes
-        ):
-        add(ChunkCompletedBlocEvent(
-          chunkIndex: chunkIndex,
-          filePath: filePath,
-          durationMs: duration.inMilliseconds,
-          sizeBytes: sizeBytes,
-        ));
+        :final chunkIndex,
+        :final filePath,
+        :final duration,
+        :final sizeBytes,
+      ):
+        add(
+          ChunkCompletedBlocEvent(
+            chunkIndex: chunkIndex,
+            filePath: filePath,
+            durationMs: duration.inMilliseconds,
+            sizeBytes: sizeBytes,
+          ),
+        );
       case MaxDurationWarningEvent():
         add(const MaxDurationWarningBlocEvent());
       case MaxDurationReachedEvent():

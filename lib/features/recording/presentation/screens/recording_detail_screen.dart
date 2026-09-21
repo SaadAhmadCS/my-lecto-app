@@ -135,7 +135,6 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
         return;
       }
 
-
       final prompt = AiShareService.buildPrompt(
         title: _title,
         subjectName: _subject?['name'] as String?,
@@ -164,7 +163,6 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       if (mounted) setState(() => _isSharing = false);
     }
   }
-
 
   /// Take the AI's reply off the clipboard and turn it into this recording's
   /// notes.
@@ -243,7 +241,6 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       debugPrint('RecordingDetail: failed to persist task toggle: $e');
     }
   }
-
 
   @override
   void dispose() {
@@ -579,7 +576,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                     tooltip: 'Search transcript',
                     onPressed: _openSearch,
                   ),
-                if (_processingStatus == RecordingFeed.ready && _summaryContent != null)
+                if (_processingStatus == RecordingFeed.ready &&
+                    _summaryContent != null)
                   IconButton(
                     icon: const Icon(Icons.picture_as_pdf_rounded),
                     tooltip: 'Export PDF',
@@ -603,7 +601,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                   tooltip: 'More',
                   onSelected: _onMenuAction,
                   itemBuilder: (context) => [
-                                        const PopupMenuItem(
+                    const PopupMenuItem(
                       value: _DetailAction.rename,
                       child: ListTile(
                         leading: Icon(Icons.edit_outlined),
@@ -626,7 +624,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                           title: Text('Copy notes'),
                         ),
                       ),
-                                        const PopupMenuItem(
+                    const PopupMenuItem(
                       value: _DetailAction.shareToAi,
                       child: ListTile(
                         leading: Icon(Icons.ios_share_rounded),
@@ -717,10 +715,9 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
         Text(
           'Make notes with your AI',
           textAlign: TextAlign.center,
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
@@ -728,9 +725,9 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
           'then bring the reply back here.',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textTertiaryDark,
-                height: 1.5,
-              ),
+            color: AppColors.textTertiaryDark,
+            height: 1.5,
+          ),
         ),
         const SizedBox(height: AppSpacing.xl),
         const _StepRow(
@@ -739,7 +736,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
         ),
         _StepRow(
           number: '2',
-          text: 'Pick ${AiShareService.audioCapableApps.join(', ')}, wait for '
+          text:
+              'Pick ${AiShareService.audioCapableApps.join(', ')}, wait for '
               'the upload, then send.',
         ),
         const _StepRow(
@@ -776,9 +774,9 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
           'ChatGPT can\'t receive audio, so it won\'t appear in the share sheet '
           'for this.',
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textTertiaryDark,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiaryDark),
         ),
         // A free Gemini account caps audio at 10 minutes. Without this the
         // rejection looks like a bug in this app rather than a plan limit.
@@ -789,9 +787,9 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
             '${_freeTierAudioLimit.inMinutes} minutes of audio on a free '
             'account — a paid plan raises that to 3 hours.',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.warning,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.warning),
           ),
         ],
       ],
@@ -822,8 +820,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
     if (_transcriptContent == null || _transcriptContent!.isEmpty) {
       // Explain rather than dead-end: in own-AI mode a long lecture is asked
       // for notes only, because its transcript would not fit in one reply.
-      final skippedForLength = true &&
-          !AiShareService.shouldRequestTranscript(_duration);
+      final skippedForLength =
+          true && !AiShareService.shouldRequestTranscript(_duration);
 
       return Center(
         child: Padding(
@@ -854,9 +852,9 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                   'device and can be played below.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textTertiaryDark,
-                        height: 1.45,
-                      ),
+                    color: AppColors.textTertiaryDark,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ],
@@ -998,7 +996,6 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       ),
     );
   }
-
 }
 
 enum _DetailAction { rename, move, copy, shareToAi, pasteNotes, delete }
@@ -1015,8 +1012,9 @@ class _RenameRecordingDialog extends StatefulWidget {
 }
 
 class _RenameRecordingDialogState extends State<_RenameRecordingDialog> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.initialTitle);
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialTitle,
+  );
 
   @override
   void dispose() {
@@ -1076,18 +1074,18 @@ class _StepRow extends StatelessWidget {
             child: Text(
               number,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
               text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    height: 1.45,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(height: 1.45),
             ),
           ),
         ],

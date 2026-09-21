@@ -114,7 +114,12 @@ class RecordingDatabase {
   static Future<void> clearAll() async {
     final db = await database;
     await db.transaction((txn) async {
-      for (final table in ['photos', 'audio_chunks', 'recordings', 'subjects']) {
+      for (final table in [
+        'photos',
+        'audio_chunks',
+        'recordings',
+        'subjects',
+      ]) {
         await txn.delete(table);
       }
       await _seedUnsorted(txn);

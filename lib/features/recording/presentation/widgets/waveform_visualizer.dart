@@ -94,15 +94,11 @@ class _WaveformVisualizerState extends State<WaveformVisualizer>
                               AppColors.primary.withValues(
                                 alpha: isCenter ? 1.0 : 0.6,
                               ),
-                              AppColors.accent.withValues(
-                                alpha: height,
-                              ),
+                              AppColors.accent.withValues(alpha: height),
                             ],
                           )
                         : null,
-                    color: widget.isActive
-                        ? null
-                        : AppColors.waveformInactive,
+                    color: widget.isActive ? null : AppColors.waveformInactive,
                   ),
                 ),
               ),

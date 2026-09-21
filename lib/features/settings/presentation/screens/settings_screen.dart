@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/dev/sample_data.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/errors/error_messages.dart';
@@ -31,7 +33,13 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.base),
+        // Bottom room for the floating nav dock.
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.base,
+          AppSpacing.base,
+          AppSpacing.base,
+          AppSpacing.huge * 2.2,
+        ),
         children: [
           // Read-only facts rather than taps that do nothing. Both are
           // compile-time settings; tapping them used to say "Coming soon".
@@ -70,6 +78,16 @@ class SettingsScreen extends StatelessWidget {
             children: const [_TranscriptionLanguageTile()],
           ),
           const SizedBox(height: AppSpacing.xl),
+
+          // Dummy lectures for testing the UI; never in a release build.
+          if (kDebugMode) ...[
+            _buildSection(
+              context,
+              title: 'Developer',
+              children: const [_SampleDataTile()],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
 
           _buildSection(
             context,
@@ -320,6 +338,61 @@ class _ClearCacheTileState extends State<_ClearCacheTile> {
           ? 'Nothing cached — your recordings are not affected'
           : '${_format(_bytes)} of merged copies · recordings are kept',
       onTap: _isWorking ? null : _clear,
+    );
+  }
+}
+
+/// Loads or removes the dummy lectures in [SampleData].
+class _SampleDataTile extends StatefulWidget {
+  const _SampleDataTile();
+
+  @override
+  State<_SampleDataTile> createState() => _SampleDataTileState();
+}
+
+class _SampleDataTileState extends State<_SampleDataTile> {
+  bool _loaded = false;
+  bool _isWorking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SampleData.isLoaded().then((loaded) {
+      if (mounted) setState(() => _loaded = loaded);
+    });
+  }
+
+  Future<void> _toggle() async {
+    if (_isWorking) return;
+    setState(() => _isWorking = true);
+
+    final loading = !_loaded;
+    await (loading ? SampleData.seed() : SampleData.clear());
+    if (!mounted) return;
+
+    setState(() {
+      _loaded = loading;
+      _isWorking = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          loading ? 'Sample data loaded.' : 'Sample data removed.',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsTile(
+      icon: _loaded ? Icons.delete_sweep_outlined : Icons.science_outlined,
+      title: _loaded ? 'Remove sample data' : 'Load sample data',
+      subtitle: _loaded
+          ? 'Deletes the dummy lectures · your own are kept'
+          : '5 subjects, 8 lectures with notes, tasks and deadlines',
+      onTap: _isWorking ? null : _toggle,
     );
   }
 }

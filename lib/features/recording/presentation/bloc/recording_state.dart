@@ -30,7 +30,7 @@ class RecordingInProgress extends RecordingBlocState {
   final double amplitude;
   final List<CapturedPhoto> photos;
   final int availableStorageMB;
-  final bool isStorageLow;
+  final bool isStorageLow;
   final bool isNearMaxDuration;
 
   const RecordingInProgress({
@@ -42,7 +42,7 @@ class RecordingInProgress extends RecordingBlocState {
     this.amplitude = 0.0,
     this.photos = const [],
     this.availableStorageMB = -1,
-    this.isStorageLow = false,
+    this.isStorageLow = false,
     this.isNearMaxDuration = false,
   });
 
@@ -54,7 +54,7 @@ class RecordingInProgress extends RecordingBlocState {
     double? amplitude,
     List<CapturedPhoto>? photos,
     int? availableStorageMB,
-    bool? isStorageLow,
+    bool? isStorageLow,
     bool? isNearMaxDuration,
   }) {
     return RecordingInProgress(
@@ -66,33 +66,31 @@ class RecordingInProgress extends RecordingBlocState {
       amplitude: amplitude ?? this.amplitude,
       photos: photos ?? this.photos,
       availableStorageMB: availableStorageMB ?? this.availableStorageMB,
-      isStorageLow: isStorageLow ?? this.isStorageLow,
+      isStorageLow: isStorageLow ?? this.isStorageLow,
       isNearMaxDuration: isNearMaxDuration ?? this.isNearMaxDuration,
     );
   }
 
   String get formattedDuration {
     final hours = totalDuration.inHours.toString().padLeft(2, '0');
-    final minutes =
-        (totalDuration.inMinutes % 60).toString().padLeft(2, '0');
-    final seconds =
-        (totalDuration.inSeconds % 60).toString().padLeft(2, '0');
+    final minutes = (totalDuration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (totalDuration.inSeconds % 60).toString().padLeft(2, '0');
     return '$hours:$minutes:$seconds';
   }
 
   @override
   List<Object?> get props => [
-        recordingId,
-        totalDuration,
-        chunkDuration,
-        chunkIndex,
-        completedChunks,
-        amplitude,
-        photos,
-        availableStorageMB,
-        isStorageLow,
-        isNearMaxDuration,
-      ];
+    recordingId,
+    totalDuration,
+    chunkDuration,
+    chunkIndex,
+    completedChunks,
+    amplitude,
+    photos,
+    availableStorageMB,
+    isStorageLow,
+    isNearMaxDuration,
+  ];
 }
 
 /// Recording is paused.
@@ -113,21 +111,19 @@ class RecordingPaused extends RecordingBlocState {
 
   String get formattedDuration {
     final hours = totalDuration.inHours.toString().padLeft(2, '0');
-    final minutes =
-        (totalDuration.inMinutes % 60).toString().padLeft(2, '0');
-    final seconds =
-        (totalDuration.inSeconds % 60).toString().padLeft(2, '0');
+    final minutes = (totalDuration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (totalDuration.inSeconds % 60).toString().padLeft(2, '0');
     return '$hours:$minutes:$seconds';
   }
 
   @override
   List<Object?> get props => [
-        recordingId,
-        totalDuration,
-        completedChunks,
-        photos,
-        availableStorageMB,
-      ];
+    recordingId,
+    totalDuration,
+    completedChunks,
+    photos,
+    availableStorageMB,
+  ];
 }
 
 /// Recording has been stopped and saved.
@@ -150,13 +146,13 @@ class RecordingCompleted extends RecordingBlocState {
 
   @override
   List<Object?> get props => [
-        recordingId,
-        totalDuration,
-        totalChunks,
-        totalPhotos,
-        recordingPath,
-        stoppedAtMaxDuration,
-      ];
+    recordingId,
+    totalDuration,
+    totalChunks,
+    totalPhotos,
+    recordingPath,
+    stoppedAtMaxDuration,
+  ];
 }
 
 /// An error occurred during recording.
@@ -164,10 +160,7 @@ class RecordingError extends RecordingBlocState {
   final String message;
   final bool canRetry;
 
-  const RecordingError({
-    required this.message,
-    this.canRetry = true,
-  });
+  const RecordingError({required this.message, this.canRetry = true});
 
   @override
   List<Object?> get props => [message, canRetry];

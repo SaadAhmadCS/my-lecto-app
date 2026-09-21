@@ -8,6 +8,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
+import '../../../recording/presentation/bloc/recording_bloc.dart';
+import '../../../recording/presentation/widgets/record_subject_sheet.dart';
 import '../../../subjects/data/subject_dao.dart';
 import '../../data/home_digest.dart';
 import '../widgets/home_action_card.dart';
@@ -150,10 +152,15 @@ class _HomeScreenState extends State<HomeScreen> {
               child: HomeActionCard(
                 title: 'Record',
                 subtitle: 'Tap to record',
-                icon: Icons.mic_rounded,
+                illustration: 'assets/images/home_record.svg',
                 background: AppColors.primary,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFF57049), Color(0xFFEC5A32)],
+                ),
                 foreground: AppColors.textOnPrimary,
-                onTap: () => context.push('/record'),
+                onTap: _startRecording,
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -163,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: _digest.subjectCount == 1
                     ? '1 course'
                     : '${_digest.subjectCount} courses',
-                icon: Icons.folder_rounded,
+                illustration: 'assets/images/home_subjects.svg',
                 background: AppColors.tintLavender,
                 foreground: AppColors.inkLavender,
                 onTap: () => context.go('/subjects'),
@@ -180,10 +187,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: tasksDue == 0
                     ? 'All clear'
                     : '$tasksDue to do',
-                icon: Icons.checklist_rounded,
+                illustration: 'assets/images/home_tasks.svg',
                 background: AppColors.tintMint,
                 foreground: AppColors.inkMint,
-                onTap: () => context.go('/transcripts'),
+                onTap: () => context.go(AppRoutes.tasks),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -193,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: quizzes == 0
                     ? 'None coming up'
                     : '$quizzes this week',
-                icon: Icons.quiz_rounded,
+                illustration: 'assets/images/home_quizzes.svg',
                 background: AppColors.tintSky,
                 foreground: AppColors.inkSky,
                 onTap: () => context.push(AppRoutes.quizzes).then((_) => _load()),
@@ -252,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _SectionHeader(
           title: 'Today',
           action: tasks.isEmpty ? null : 'View all',
-          onAction: () => context.go('/transcripts'),
+          onAction: () => context.go(AppRoutes.tasks),
         ),
         const SizedBox(height: AppSpacing.md),
         if (_isLoading)
@@ -281,10 +288,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: HomeTaskRow(
                     task: task,
-                    onTap: () => context.push(
-                      '/recording/${task.recordingId}'
-                      '?title=${Uri.encodeComponent(task.recordingTitle)}',
-                    ),
+                    onTap: () => context
+                        .push(
+                          '/recording/${task.recordingId}'
+                          '?title=${Uri.encodeComponent(task.recordingTitle)}',
+                        )
+                        .then((_) => _load()),
+                    onToggle: () async {
+                      await _builder.toggleTask(task);
+                      await _load();
+                    },
                   ),
                 ),
               ),
@@ -299,7 +312,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionHeader(title: 'Coming up'),
+        _SectionHeader(
+          title: 'Coming up',
+          action: 'Calendar',
+          onAction: () => context.go(AppRoutes.calendar),
+        ),
         const SizedBox(height: AppSpacing.md),
         SizedBox(
           height: 132,
@@ -319,6 +336,23 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  /// Ask which subject, then go straight into recording.
+  ///
+  /// If a recording is already running, this just returns to it.
+  Future<void> _startRecording() async {
+    if (context.read<RecordingBloc>().isActive) {
+      await context.push(AppRoutes.record);
+    } else {
+      final subjectId = await RecordSubjectSheet.show(context);
+      if (subjectId == null || !mounted) return;
+      await context.push(
+        '${AppRoutes.record}?subjectId=${Uri.encodeComponent(subjectId)}'
+        '&start=1',
+      );
+    }
+    if (mounted) _load();
   }
 
   /// There is no account, so the name is simply a preference.

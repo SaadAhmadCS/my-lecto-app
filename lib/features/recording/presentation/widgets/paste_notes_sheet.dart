@@ -78,16 +78,16 @@ class PasteNotesSheet extends StatelessWidget {
               children: [
                 Text(
                   'Review notes',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   _summaryLine(),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textTertiaryDark,
-                      ),
+                    color: AppColors.textTertiaryDark,
+                  ),
                 ),
               ],
             ),
@@ -191,9 +191,9 @@ class PasteNotesSheet extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.warning,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.warning),
             ),
           ),
         ],

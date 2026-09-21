@@ -6,13 +6,19 @@ import '../../data/home_digest.dart';
 
 /// One task on the dashboard, with its subject and how long is left.
 ///
-/// Tapping opens the lecture it came from rather than ticking the box: the
-/// tick lives with the notes, where the markdown holding it is rewritten.
+/// Tapping the row opens the lecture it came from; tapping the circle ticks
+/// the task when [onToggle] is given.
 class HomeTaskRow extends StatelessWidget {
   final HomeTask task;
   final VoidCallback onTap;
+  final VoidCallback? onToggle;
 
-  const HomeTaskRow({super.key, required this.task, required this.onTap});
+  const HomeTaskRow({
+    super.key,
+    required this.task,
+    required this.onTap,
+    this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +37,22 @@ class HomeTaskRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _Tick(done: task.done),
+            if (onToggle == null)
+              _Tick(done: task.done)
+            else
+              Semantics(
+                label: task.done ? 'Mark as not done' : 'Mark as done',
+                button: true,
+                child: GestureDetector(
+                  onTap: onToggle,
+                  behavior: HitTestBehavior.opaque,
+                  // A roomier target than the 26px circle itself.
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: _Tick(done: task.done),
+                  ),
+                ),
+              ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(

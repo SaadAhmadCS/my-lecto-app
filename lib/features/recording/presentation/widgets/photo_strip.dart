@@ -11,11 +11,7 @@ class PhotoStrip extends StatelessWidget {
   final List<CapturedPhoto> photos;
   final VoidCallback? onViewAll;
 
-  const PhotoStrip({
-    super.key,
-    required this.photos,
-    this.onViewAll,
-  });
+  const PhotoStrip({super.key, required this.photos, this.onViewAll});
 
   @override
   Widget build(BuildContext context) {

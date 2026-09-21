@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="quizFrontGrad" x1="50" y1="40" x2="140" y2="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="quizBackGrad" x1="80" y1="35" x2="160" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient blue tone halo -->
+  <ellipse cx="100" cy="108" rx="68" ry="46" fill="#2563eb" fill-opacity="0.1"/>
+
+  <!-- Angled back card indicating multiple flashcards -->
+  <rect x="82" y="38" width="76" height="106" rx="14" transform="rotate(12 82 38)" fill="url(#quizBackGrad)" fill-opacity="0.45"/>
+
+  <!-- Primary Foreground Quiz Flashcard -->
+  <rect x="52" y="46" width="90" height="118" rx="16" fill="url(#quizFrontGrad)"/>
+
+  <!-- Top badge capsule on card -->
+  <rect x="66" y="58" width="34" height="6" rx="3" fill="#ffffff" fill-opacity="0.4"/>
+
+  <!-- Central Bold White Question Mark with modern proportions -->
+  <path d="M85 86C85 77.716 91.716 71 100 71C108.284 71 115 77.716 115 86C115 91.8 111.2 95.5 106.5 98.8C101.8 102 99.5 105.2 99.5 109.5" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="99.5" cy="124" r="4.25" fill="#ffffff"/>
+
+  <!-- Interactive answer selector option indicators -->
+  <rect x="68" y="142" width="14" height="6" rx="3" fill="#ffffff" fill-opacity="0.4"/>
+  <rect x="86" y="142" width="22" height="6" rx="3" fill="#ffffff" fill-opacity="0.85"/>
+  <rect x="112" y="142" width="14" height="6" rx="3" fill="#ffffff" fill-opacity="0.4"/>
+
+  <!-- Discovery insight sparkles -->
+  <path d="M150 40L152.5 46.5L159 49L152.5 51.5L150 58L147.5 51.5L141 49L147.5 46.5L150 40Z" fill="#3b82f6"/>
+  <path d="M42 66L43.5 70L47.5 71.5L43.5 73L42 77L40.5 73L36.5 71.5L40.5 70L42 66Z" fill="#60a5fa"/>
+</svg>

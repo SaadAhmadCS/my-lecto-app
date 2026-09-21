@@ -18,6 +18,8 @@ import 'features/recording/data/services/audio_recorder_service.dart';
 import 'features/recording/data/services/photo_capture_service.dart';
 import 'features/recording/data/services/recording_recovery_service.dart';
 import 'features/recording/data/services/storage_monitor_service.dart';
+import 'features/recording/presentation/bloc/recording_bloc.dart';
+import 'features/recording/presentation/widgets/recording_mini_bar.dart';
 import 'features/subjects/data/subject_dao.dart';
 
 void main() async {
@@ -110,13 +112,30 @@ class MyLectoApp extends StatelessWidget {
           value: sl<RecordingFeed>(),
         ),
       ],
-      child: MaterialApp.router(
-        title: 'My Lecto',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light,
-        routerConfig: router,
+      // One recorder for the whole app, so a recording keeps going while you
+      // move around instead of being tied to the recording screen.
+      child: BlocProvider<RecordingBloc>(
+        create: (context) => RecordingBloc(
+          recorderService: context.read(),
+          storageMonitor: context.read(),
+          photoService: context.read(),
+          permissionService: context.read(),
+          recordingDao: context.read(),
+        ),
+        child: MaterialApp.router(
+          title: 'My Lecto',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.light,
+          routerConfig: router,
+          builder: (context, child) => Stack(
+            children: [
+              if (child != null) Positioned.fill(child: child),
+              RecordingMiniBar(router: router),
+            ],
+          ),
+        ),
       ),
     );
   }

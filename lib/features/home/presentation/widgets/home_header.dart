@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../../core/constants/user_profile.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 
@@ -30,22 +30,17 @@ class HomeHeader extends StatelessWidget {
 
     return Row(
       children: [
-        GestureDetector(
-          onTap: onAvatarTap,
-          child: Container(
-            width: 46,
-            height: 46,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              UserProfile.initial(name),
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: AppColors.textOnPrimary,
-                fontWeight: FontWeight.w800,
-              ),
+        // The Lecto mascot stands in for a profile photo; tapping it still
+        // sets the name used in the greeting.
+        Semantics(
+          label: name.isEmpty ? 'Set your name' : 'Profile: $name',
+          button: true,
+          child: GestureDetector(
+            onTap: onAvatarTap,
+            child: SvgPicture.asset(
+              'assets/images/avatar_mascot.svg',
+              width: 46,
+              height: 46,
             ),
           ),
         ),

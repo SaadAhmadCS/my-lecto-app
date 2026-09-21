@@ -44,7 +44,9 @@ class StorageStatusBar extends StatelessWidget {
           _buildIndicator(
             icon: Icons.storage_rounded,
             label: _formatStorage(),
-            color: isStorageLow ? AppColors.warning : AppColors.textSecondaryDark,
+            color: isStorageLow
+                ? AppColors.warning
+                : AppColors.textSecondaryDark,
           ),
 
           // Separator

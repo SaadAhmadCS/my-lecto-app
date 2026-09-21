@@ -23,10 +23,8 @@ class RecordingTimer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hours = totalDuration.inHours.toString().padLeft(2, '0');
-    final minutes =
-        (totalDuration.inMinutes % 60).toString().padLeft(2, '0');
-    final seconds =
-        (totalDuration.inSeconds % 60).toString().padLeft(2, '0');
+    final minutes = (totalDuration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (totalDuration.inSeconds % 60).toString().padLeft(2, '0');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -57,9 +55,7 @@ class RecordingTimer extends StatelessWidget {
               height: 8,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isPaused
-                    ? AppColors.warning
-                    : AppColors.recordingRed,
+                color: isPaused ? AppColors.warning : AppColors.recordingRed,
               ),
             ),
             const SizedBox(width: AppSpacing.sm),

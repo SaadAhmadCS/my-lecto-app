@@ -18,7 +18,8 @@ class SubjectDao {
 
     final rows = await db.rawQuery('''
       SELECT s.id, s.name, s.color, s.created_at,
-             COUNT(r.id) AS recording_count
+             COUNT(r.id) AS recording_count,
+             MAX(r.created_at) AS last_recorded_at
       FROM subjects s
       LEFT JOIN recordings r ON r.subject_id = s.id
       GROUP BY s.id
@@ -33,7 +34,8 @@ class SubjectDao {
 
     final rows = await db.rawQuery('''
       SELECT s.id, s.name, s.color, s.created_at,
-             COUNT(r.id) AS recording_count
+             COUNT(r.id) AS recording_count,
+             MAX(r.created_at) AS last_recorded_at
       FROM subjects s
       LEFT JOIN recordings r ON r.subject_id = s.id
       WHERE s.id = ?
@@ -112,6 +114,7 @@ class SubjectDao {
         'name': row['name'],
         'color': row['color'],
         'createdAt': row['created_at'],
+        'lastRecordedAt': row['last_recorded_at'],
         '_count': {'recordings': (row['recording_count'] as int?) ?? 0},
       };
 }

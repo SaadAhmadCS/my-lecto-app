@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/errors/error_messages.dart';
 import '../../data/subject_dao.dart';
+import '../widgets/create_subject_sheet.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 
@@ -72,140 +73,9 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     }
   }
 
-  void _showCreateDialog() {
-    final nameController = TextEditingController();
-    int selectedColorIndex = 0;
-
-    showModalBottomSheet(
-      useRootNavigator: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.darkSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: AppSpacing.xl,
-                right: AppSpacing.xl,
-                top: AppSpacing.xl,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.darkBorder,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  Text(
-                    'New Subject',
-                    style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Name input
-                  TextField(
-                    controller: nameController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Subject name (e.g. Calculus)',
-                      prefixIcon: Icon(Icons.book_outlined),
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Color picker
-                  Text(
-                    'Color',
-                    style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
-                      color: AppColors.textSecondaryDark,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: List.generate(
-                      AppColors.subjectColors.length,
-                      (i) => GestureDetector(
-                        onTap: () =>
-                            setSheetState(() => selectedColorIndex = i),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppColors.subjectColors[i],
-                            borderRadius: BorderRadius.circular(10),
-                            border: selectedColorIndex == i
-                                ? Border.all(color: Colors.white, width: 2.5)
-                                : null,
-                          ),
-                          child: selectedColorIndex == i
-                              ? const Icon(
-                                  Icons.check_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xxl),
-
-                  // Create button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final name = nameController.text.trim();
-                        if (name.isEmpty) return;
-
-                        Navigator.of(ctx).pop();
-                        final colorHex =
-                            '#${AppColors.subjectColors[selectedColorIndex].toARGB32().toRadixString(16).substring(2)}';
-
-                        try {
-                          await _subjectDao.createSubject(name: name, color: colorHex);
-                          _loadSubjects();
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(ErrorMessages.from(e, action: 'create the subject')),
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      child: const Text('Create Subject'),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+  Future<void> _showCreateDialog() async {
+    final created = await showCreateSubjectSheet(context);
+    if (created != null) _loadSubjects();
   }
 
   void _showEditDialog(Map<String, dynamic> subject) {

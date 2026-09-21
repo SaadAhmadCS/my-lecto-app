@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../recording/data/local/recording_feed.dart';
+import '../../../recording/presentation/bloc/recording_bloc.dart';
 import '../../data/subject_dao.dart';
 import '../../../../shared/widgets/recording_card.dart';
 
@@ -83,7 +85,14 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   }
 
   Future<void> _recordInSubject() async {
-    await context.push('/record?subjectId=${widget.subjectId}');
+    // The subject is already known, so skip the picker and start recording —
+    // unless one is running, in which case this returns to it.
+    final active = context.read<RecordingBloc>().isActive;
+    await context.push(
+      active
+          ? AppRoutes.record
+          : '${AppRoutes.record}?subjectId=${widget.subjectId}&start=1',
+    );
     if (mounted) _load();
   }
 

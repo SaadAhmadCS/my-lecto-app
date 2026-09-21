@@ -16,7 +16,8 @@ class RecordingAudioPlayerBar extends StatefulWidget {
   const RecordingAudioPlayerBar({super.key, required this.recordingId});
 
   @override
-  State<RecordingAudioPlayerBar> createState() => _RecordingAudioPlayerBarState();
+  State<RecordingAudioPlayerBar> createState() =>
+      _RecordingAudioPlayerBarState();
 }
 
 class _RecordingAudioPlayerBarState extends State<RecordingAudioPlayerBar> {
@@ -50,11 +51,17 @@ class _RecordingAudioPlayerBarState extends State<RecordingAudioPlayerBar> {
 
       final files = await dir
           .list()
-          .where((e) => e is File && _chunkFilePattern.hasMatch(e.uri.pathSegments.last))
+          .where(
+            (e) =>
+                e is File &&
+                _chunkFilePattern.hasMatch(e.uri.pathSegments.last),
+          )
           .cast<File>()
           .toList();
       if (files.isEmpty) return;
-      files.sort((a, b) => a.path.compareTo(b.path)); // chunk_000, chunk_001, ...
+      files.sort(
+        (a, b) => a.path.compareTo(b.path),
+      ); // chunk_000, chunk_001, ...
 
       // Per-chunk durations, needed to map the seek bar across chunks
       final offsets = <Duration>[];
@@ -127,7 +134,10 @@ class _RecordingAudioPlayerBarState extends State<RecordingAudioPlayerBar> {
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.sm, AppSpacing.xs, AppSpacing.base, AppSpacing.xs,
+          AppSpacing.sm,
+          AppSpacing.xs,
+          AppSpacing.base,
+          AppSpacing.xs,
         ),
         decoration: const BoxDecoration(
           color: AppColors.darkSurface,
@@ -139,7 +149,8 @@ class _RecordingAudioPlayerBarState extends State<RecordingAudioPlayerBar> {
               stream: _player.playerStateStream,
               builder: (context, snapshot) {
                 final state = snapshot.data ?? _player.playerState;
-                final isPlaying = state.playing &&
+                final isPlaying =
+                    state.playing &&
                     state.processingState != ProcessingState.completed;
                 return IconButton(
                   onPressed: () => _togglePlay(state),
@@ -156,10 +167,13 @@ class _RecordingAudioPlayerBarState extends State<RecordingAudioPlayerBar> {
               child: StreamBuilder<Duration>(
                 stream: _player.positionStream,
                 builder: (context, snapshot) {
-                  final position = _globalPosition(snapshot.data ?? Duration.zero);
+                  final position = _globalPosition(
+                    snapshot.data ?? Duration.zero,
+                  );
                   final totalMs = _total.inMilliseconds.toDouble();
-                  final valueMs = (_dragValueMs ?? position.inMilliseconds.toDouble())
-                      .clamp(0.0, totalMs);
+                  final valueMs =
+                      (_dragValueMs ?? position.inMilliseconds.toDouble())
+                          .clamp(0.0, totalMs);
 
                   return Column(
                     mainAxisSize: MainAxisSize.min,
@@ -187,15 +201,13 @@ class _RecordingAudioPlayerBarState extends State<RecordingAudioPlayerBar> {
                         children: [
                           Text(
                             _format(Duration(milliseconds: valueMs.round())),
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: AppColors.textTertiaryDark,
-                                ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: AppColors.textTertiaryDark),
                           ),
                           Text(
                             _format(_total),
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: AppColors.textTertiaryDark,
-                                ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: AppColors.textTertiaryDark),
                           ),
                         ],
                       ),

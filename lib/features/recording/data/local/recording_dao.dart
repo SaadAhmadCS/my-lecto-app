@@ -19,21 +19,17 @@ class RecordingDao {
     final db = await RecordingDatabase.database;
     final now = DateTime.now().toIso8601String();
 
-    await db.insert(
-      'recordings',
-      {
-        'id': id,
-        'subject_id': subjectId,
-        'title': title,
-        'status': status,
-        'audio_format': audioFormat,
-        'chunk_duration_min': chunkDurationMin,
-        'total_duration_ms': 0,
-        'created_at': now,
-        'updated_at': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('recordings', {
+      'id': id,
+      'subject_id': subjectId,
+      'title': title,
+      'status': status,
+      'audio_format': audioFormat,
+      'chunk_duration_min': chunkDurationMin,
+      'total_duration_ms': 0,
+      'created_at': now,
+      'updated_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Update recording status and duration.
@@ -125,11 +121,7 @@ class RecordingDao {
     final db = await RecordingDatabase.database;
     final rows = await db.query(
       'recordings',
-      columns: [
-        'notes_markdown',
-        'transcript_markdown',
-        'notes_updated_at',
-      ],
+      columns: ['notes_markdown', 'transcript_markdown', 'notes_updated_at'],
       where: 'id = ?',
       whereArgs: [id],
       limit: 1,
@@ -208,20 +200,16 @@ class RecordingDao {
   }) async {
     final db = await RecordingDatabase.database;
 
-    await db.insert(
-      'audio_chunks',
-      {
-        'id': id,
-        'recording_id': recordingId,
-        'sequence_number': sequenceNumber,
-        'file_path': filePath,
-        'duration_ms': durationMs,
-        'size_bytes': sizeBytes,
-        'status': 'recorded',
-        'created_at': DateTime.now().toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('audio_chunks', {
+      'id': id,
+      'recording_id': recordingId,
+      'sequence_number': sequenceNumber,
+      'file_path': filePath,
+      'duration_ms': durationMs,
+      'size_bytes': sizeBytes,
+      'status': 'recorded',
+      'created_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Get all chunks for a recording.
@@ -248,19 +236,15 @@ class RecordingDao {
   }) async {
     final db = await RecordingDatabase.database;
 
-    await db.insert(
-      'photos',
-      {
-        'id': id,
-        'recording_id': recordingId,
-        'chunk_index': chunkIndex,
-        'file_path': filePath,
-        'timestamp_ms': timestampMs,
-        'size_bytes': sizeBytes,
-        'created_at': DateTime.now().toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('photos', {
+      'id': id,
+      'recording_id': recordingId,
+      'chunk_index': chunkIndex,
+      'file_path': filePath,
+      'timestamp_ms': timestampMs,
+      'size_bytes': sizeBytes,
+      'created_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Get all photos for a recording.

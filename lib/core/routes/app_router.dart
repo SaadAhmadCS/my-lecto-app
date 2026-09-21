@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/home/presentation/screens/calendar_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/tasks_screen.dart';
 import '../../features/recording/presentation/screens/recording_detail_screen.dart';
 import '../../features/recording/presentation/screens/recording_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
@@ -23,6 +25,8 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String recordingDetail = '/recording/:id';
   static const String quizzes = '/quizzes';
+  static const String tasks = '/tasks';
+  static const String calendar = '/calendar';
 }
 
 /// GoRouter configuration.
@@ -47,6 +51,16 @@ class AppRouter {
                 path: AppRoutes.home,
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: HomeScreen()),
+              ),
+              GoRoute(
+                path: AppRoutes.tasks,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: TasksScreen()),
+              ),
+              GoRoute(
+                path: AppRoutes.calendar,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: CalendarScreen()),
               ),
               GoRoute(
                 path: AppRoutes.subjects,
@@ -76,6 +90,8 @@ class AppRouter {
             path: AppRoutes.record,
             builder: (context, state) => RecordingScreen(
               initialSubjectId: state.uri.queryParameters['subjectId'],
+              // Arriving with a subject already chosen starts straight away.
+              autoStart: state.uri.queryParameters['start'] == '1',
             ),
           ),
           GoRoute(

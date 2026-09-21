@@ -34,6 +34,14 @@ class StopRecordingEvent extends RecordingBlocEvent {
   const StopRecordingEvent();
 }
 
+/// Clear a finished or failed session so the next one starts fresh.
+///
+/// The bloc lives for the whole app so a recording survives leaving its
+/// screen; this is what returns it to idle afterwards. Ignored mid-recording.
+class ResetRecordingEvent extends RecordingBlocEvent {
+  const ResetRecordingEvent();
+}
+
 /// Capture a photo of the board during recording.
 class CapturePhotoEvent extends RecordingBlocEvent {
   final String photoFilePath;
