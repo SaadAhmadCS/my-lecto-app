@@ -35,7 +35,11 @@ class _TasksScreenState extends State<TasksScreen> {
 
   List<HomeTask> _open = const [];
   List<HomeTask> _done = const [];
-  bool _showDone = false;
+  _View _view = _View.assignments;
+
+  List<HomeTask> get _openAssignments =>
+      _open.where((t) => t.isAssignment).toList();
+  List<HomeTask> get _openTasks => _open.where((t) => !t.isAssignment).toList();
   bool _isLoading = true;
 
   @override
@@ -57,7 +61,15 @@ class _TasksScreenState extends State<TasksScreen> {
     _open = digest.todayTasks.where((task) => !task.done).toList();
     _done = digest.tasks.where((task) => task.done).toList();
     _isLoading = false;
+    // Open on whichever list has something in it, until the student picks.
+    if (!_viewChosen) {
+      _view = _openAssignments.isEmpty && _openTasks.isNotEmpty
+          ? _View.tasks
+          : _View.assignments;
+    }
   }
+
+  bool _viewChosen = false;
 
   Future<void> _toggle(HomeTask task) async {
     final changed = await _builder.toggleTask(task);
@@ -83,12 +95,12 @@ class _TasksScreenState extends State<TasksScreen> {
         .then((_) => _load());
   }
 
-  /// Open tasks in due-date buckets, in order, skipping empty ones.
-  List<(_Bucket, List<HomeTask>)> get _buckets {
+  /// [items] in due-date buckets, in order, skipping empty ones.
+  List<(_Bucket, List<HomeTask>)> _buckets(List<HomeTask> items) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final groups = <_Bucket, List<HomeTask>>{};
-    for (final task in _open) {
+    for (final task in items) {
       groups.putIfAbsent(_Bucket.of(task.dueAt, today), () => []).add(task);
     }
     return [
@@ -137,28 +149,42 @@ class _TasksScreenState extends State<TasksScreen> {
                       const _EmptyTasks()
                     else ...[
                       _Segmented(
-                        showDone: _showDone,
-                        openCount: _open.length,
-                        doneCount: _done.length,
-                        onChanged: (v) => setState(() => _showDone = v),
+                        view: _view,
+                        counts: {
+                          _View.assignments: _openAssignments.length,
+                          _View.tasks: _openTasks.length,
+                          _View.done: _done.length,
+                        },
+                        onChanged: (v) => setState(() {
+                          _view = v;
+                          _viewChosen = true;
+                        }),
                       ),
                       const SizedBox(height: 16),
-                      if (_showDone)
-                        ..._rows(_done)
-                      else if (_open.isEmpty)
-                        const _AllDone()
-                      else
-                        for (final (bucket, tasks) in _buckets) ...[
-                          _BucketLabel(bucket: bucket, count: tasks.length),
-                          ..._rows(tasks),
-                          const SizedBox(height: 8),
-                        ],
+                      ..._viewBody(),
                     ],
                   ],
                 ),
               ),
       ),
     );
+  }
+
+  List<Widget> _viewBody() {
+    final items = switch (_view) {
+      _View.assignments => _openAssignments,
+      _View.tasks => _openTasks,
+      _View.done => _done,
+    };
+    if (items.isEmpty) return [_Nothing(view: _view)];
+    if (_view == _View.done) return _rows(items);
+    return [
+      for (final (bucket, tasks) in _buckets(items)) ...[
+        _BucketLabel(bucket: bucket, count: tasks.length),
+        ..._rows(tasks),
+        const SizedBox(height: 8),
+      ],
+    ];
   }
 
   List<Widget> _rows(List<HomeTask> tasks) => [
@@ -324,50 +350,30 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(_RingPainter old) => old.progress != progress;
 }
 
-/// "To do · 8 | Done · 2".
+/// Which list the Tasks tab is showing.
+enum _View {
+  assignments('Assignments'),
+  tasks('Tasks'),
+  done('Done');
+
+  const _View(this.label);
+  final String label;
+}
+
+/// "Assignments 3 | Tasks 5 | Done 2", as the dark pill switch.
 class _Segmented extends StatelessWidget {
-  final bool showDone;
-  final int openCount;
-  final int doneCount;
-  final ValueChanged<bool> onChanged;
+  final _View view;
+  final Map<_View, int> counts;
+  final ValueChanged<_View> onChanged;
 
   const _Segmented({
-    required this.showDone,
-    required this.openCount,
-    required this.doneCount,
+    required this.view,
+    required this.counts,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    Widget segment(String label, bool selected, VoidCallback onTap) {
-      return Expanded(
-        child: GestureDetector(
-          onTap: onTap,
-          behavior: HitTestBehavior.opaque,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected ? AppColors.navBar : Colors.transparent,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w800,
-                color: selected
-                    ? AppColors.textOnPrimary
-                    : AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -376,8 +382,120 @@ class _Segmented extends StatelessWidget {
       ),
       child: Row(
         children: [
-          segment('To do · $openCount', !showDone, () => onChanged(false)),
-          segment('Done · $doneCount', showDone, () => onChanged(true)),
+          for (final v in _View.values)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onChanged(v),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: v == view ? AppColors.navBar : Colors.transparent,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          v.label,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: v == view
+                                ? AppColors.textOnPrimary
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      if ((counts[v] ?? 0) > 0) ...[
+                        const SizedBox(width: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: v == view
+                                ? AppColors.primary
+                                : AppColors.surface,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Text(
+                            '${counts[v]}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: v == view
+                                  ? AppColors.textOnPrimary
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// An empty list, said differently for each view.
+class _Nothing extends StatelessWidget {
+  final _View view;
+
+  const _Nothing({required this.view});
+
+  @override
+  Widget build(BuildContext context) {
+    final (emoji, title, body) = switch (view) {
+      _View.assignments => (
+        '📝',
+        'No assignments due',
+        'Graded work your lecturers set shows up here, with its due date.',
+      ),
+      _View.tasks => (
+        '✨',
+        'No tasks left',
+        'Reading and practice from your lectures lands here.',
+      ),
+      _View.done => (
+        '🌱',
+        'Nothing ticked off yet',
+        'Tick something off and it moves here.',
+      ),
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 28),
+      child: Column(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 38)),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -422,36 +540,6 @@ class _BucketLabel extends StatelessWidget {
               fontWeight: FontWeight.w800,
               color: AppColors.textMuted,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AllDone extends StatelessWidget {
-  const _AllDone();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 28),
-      child: Column(
-        children: [
-          Text('🎉', style: TextStyle(fontSize: 40)),
-          SizedBox(height: 10),
-          Text(
-            'All caught up',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Every task from your lectures is ticked off.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
         ],
       ),

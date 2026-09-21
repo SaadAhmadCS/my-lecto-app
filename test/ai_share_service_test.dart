@@ -43,6 +43,9 @@ void main() {
         AiShareService.conceptsHeading,
         AiShareService.tasksHeading,
         AiShareService.deadlinesHeading,
+        AiShareService.assignmentsHeading,
+        AiShareService.quizzesHeading,
+        AiShareService.importantHeading,
       ]) {
         expect(prompt, contains(heading), reason: 'missing $heading');
       }
@@ -62,6 +65,12 @@ void main() {
         reply.writeln(heading);
         if (heading == AiShareService.tasksHeading) {
           reply.writeln('- [ ] Do the reading');
+        } else if (heading == AiShareService.assignmentsHeading) {
+          reply.writeln('- [ ] Lab report 3 — due 2026-10-01 — submit on LMS');
+        } else if (heading == AiShareService.quizzesHeading) {
+          reply.writeln('- 2026-09-28 — Quiz 2 — chapter 5, 20 minutes');
+        } else if (heading == AiShareService.importantHeading) {
+          reply.writeln('- Section B will be on the final.');
         } else if (heading == AiShareService.deadlinesHeading) {
           reply.writeln('- 2026-10-01 — Essay due');
         } else if (heading == AiShareService.conceptsHeading) {
@@ -77,6 +86,10 @@ void main() {
       expect(parsed.summary, isNotNull);
       expect(parsed.concepts, hasLength(1));
       expect(parsed.tasks, hasLength(1));
+      expect(parsed.assignments.single.text, 'Lab report 3');
+      expect(parsed.assignments.single.due, DateTime(2026, 10, 1));
+      expect(parsed.quizzes.single.title, 'Quiz 2');
+      expect(parsed.important, hasLength(1));
       expect(parsed.deadlines, hasLength(1));
       expect(parsed.hasTranscript, isTrue);
     });

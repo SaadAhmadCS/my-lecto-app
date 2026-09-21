@@ -576,23 +576,9 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                 if (_processingStatus == RecordingFeed.ready &&
                     _summaryContent != null)
                   IconButton(
-                    icon: const Icon(Icons.picture_as_pdf_rounded),
-                    tooltip: 'Export PDF',
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => ExportOptionsSheet(
-                          title: _title,
-                          subjectName: _subject?['name'] as String?,
-                          recordingDate: _recordedAt,
-                          duration: _duration,
-                          summaryContent: _summaryContent!,
-                          transcriptContent: _transcriptContent,
-                        ),
-                      );
-                    },
+                    icon: const Icon(Icons.download_rounded),
+                    tooltip: 'Download PDF',
+                    onPressed: _exportPdf,
                   ),
                 PopupMenuButton<_DetailAction>(
                   tooltip: 'More',
@@ -806,15 +792,73 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                 ),
               if (duration != null)
                 chip(Icons.timer_outlined, formatRecordingDuration(duration)),
-              if (_localNotes?.tasks.isNotEmpty ?? false)
+              if (_localNotes?.assignments.isNotEmpty ?? false)
                 chip(
-                  Icons.checklist_rounded,
-                  '${_localNotes!.tasks.where((t) => t.done).length}'
-                  '/${_localNotes!.tasks.length} tasks',
+                  Icons.assignment_rounded,
+                  '${_localNotes!.assignments.length} '
+                  'assignment${_localNotes!.assignments.length == 1 ? '' : 's'}',
+                ),
+              if (_localNotes?.quizzes.isNotEmpty ?? false)
+                chip(
+                  Icons.quiz_rounded,
+                  '${_localNotes!.quizzes.length} '
+                  'quiz${_localNotes!.quizzes.length == 1 ? '' : 'zes'}',
+                ),
+              // The quickest way to a PDF, where the eye already is.
+              if (_summaryContent != null)
+                GestureDetector(
+                  onTap: _exportPdf,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.download_rounded,
+                          size: 13,
+                          color: AppColors.textOnPrimary,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'PDF',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textOnPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _exportPdf() {
+    final summary = _summaryContent;
+    if (summary == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ExportOptionsSheet(
+        title: _title,
+        subjectName: _subject?['name'] as String?,
+        recordingDate: _recordedAt,
+        duration: _duration,
+        summaryContent: summary,
+        transcriptContent: _transcriptContent,
       ),
     );
   }

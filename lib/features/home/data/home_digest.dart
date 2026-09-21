@@ -52,7 +52,7 @@ enum UpcomingKind {
   }
 }
 
-/// One checklist item, with the lecture it came from.
+/// One piece of work from a lecture: a graded assignment or an ungraded task.
 class HomeTask {
   final String text;
   final bool done;
@@ -67,6 +67,12 @@ class HomeTask {
   /// themselves carry no date — this is the best available signal.
   final DateTime? dueAt;
 
+  /// Graded work the lecturer set, as opposed to reading or practice.
+  final bool isAssignment;
+
+  /// How to submit it, marks, format — whatever the lecture said.
+  final String? details;
+
   /// Where the checklist line sits in the lecture's notes, so it can be ticked
   /// from outside the notes screen.
   final int? lineIndex;
@@ -80,6 +86,8 @@ class HomeTask {
     this.subjectColor,
     this.dueAt,
     this.lineIndex,
+    this.isAssignment = false,
+    this.details,
   });
 
   bool get isDueToday {
@@ -103,6 +111,9 @@ class UpcomingItem {
   /// The subject's colour, as stored: "#5244e3".
   final String? subjectColor;
 
+  /// What it covers, its format, how to submit — whatever the lecture said.
+  final String? details;
+
   const UpcomingItem({
     required this.title,
     required this.rawDate,
@@ -112,6 +123,7 @@ class UpcomingItem {
     this.date,
     this.subjectName,
     this.subjectColor,
+    this.details,
   });
 
   /// Whole days from today. Negative once it has passed.
@@ -220,8 +232,44 @@ class HomeDigestBuilder {
         final subject = subjectMap?['name'] as String?;
         final subjectColor = subjectMap?['color'] as String?;
 
-        // A lecture's own deadlines are the only date signal its tasks have.
-        final nearest = _nearestDate(parsed.deadlines);
+        // Older notes (before assignments had their own section and dates)
+        // lean on the lecture's nearest deadline for their tasks' urgency.
+        // Newer notes date the assignments themselves, so tasks stay undated.
+        final legacy = parsed.assignments.isEmpty && parsed.quizzes.isEmpty;
+        final nearest = legacy ? _nearestDate(parsed.deadlines) : null;
+
+        for (final assignment in parsed.assignments) {
+          tasks.add(
+            HomeTask(
+              text: assignment.text,
+              done: assignment.done,
+              recordingId: id,
+              recordingTitle: title,
+              subjectName: subject,
+              subjectColor: subjectColor,
+              dueAt: assignment.done ? null : assignment.due,
+              lineIndex: assignment.lineIndex,
+              isAssignment: true,
+              details: assignment.details,
+            ),
+          );
+          final due = assignment.due;
+          if (due != null) {
+            upcoming.add(
+              UpcomingItem(
+                title: assignment.text,
+                date: due,
+                rawDate: '',
+                kind: UpcomingKind.assignment,
+                recordingId: id,
+                recordingTitle: title,
+                subjectName: subject,
+                subjectColor: subjectColor,
+                details: assignment.details,
+              ),
+            );
+          }
+        }
 
         for (final task in parsed.tasks) {
           tasks.add(
@@ -234,6 +282,22 @@ class HomeDigestBuilder {
               subjectColor: subjectColor,
               dueAt: task.done ? null : nearest,
               lineIndex: task.lineIndex,
+            ),
+          );
+        }
+
+        for (final quiz in parsed.quizzes) {
+          upcoming.add(
+            UpcomingItem(
+              title: quiz.title,
+              date: quiz.date,
+              rawDate: quiz.rawDate,
+              kind: UpcomingKind.quiz,
+              recordingId: id,
+              recordingTitle: title,
+              subjectName: subject,
+              subjectColor: subjectColor,
+              details: quiz.details,
             ),
           );
         }

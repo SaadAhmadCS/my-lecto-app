@@ -148,13 +148,13 @@ Hey hello, this is your computer science advanced database lecture.
 ## Summary
 A lecture.
 
-## Exam Tips
+## Further Reading
 - Revise the second half of the syllabus.
 ''');
 
       expect(notes.summary, contains('lecture'));
       expect(notes.extraSections, hasLength(1));
-      expect(notes.extraSections.single.title, 'Exam Tips');
+      expect(notes.extraSections.single.title, 'Further Reading');
       expect(notes.extraSections.single.body, contains('second half'));
     });
 
@@ -205,6 +205,108 @@ It was a lecture.
 ''');
 
       expect(notes.summary, contains('lecture'));
+      expect(notes.concepts, hasLength(1));
+    });
+  });
+
+  group('assignments, quizzes and important', () {
+    // As a reply to the new prompt looks once an app has stripped markdown.
+    const reply = '''
+Summary
+Pipelining and hazards.
+Important
+ * Section B of the syllabus will definitely be on the final.
+ * Lab moves to Room 504 from next week.
+Assignments
+ * [ ] Lab report 2 — due 2026-09-26 — submit on the LMS as a PDF — 10 marks
+ * Pipeline simulator project — groups of 3
+Quizzes & Exams
+ * 2026-09-24 — Quiz 1 — pipelining basics — 20 minutes, closed book
+ * Midterm — everything up to caches
+Tasks
+ * [ ] Read chapter 4.5
+Key Concepts
+ * Forwarding — passing a result straight to the next stage.
+Other Dates
+ * 2026-10-10 — Guest lecture
+''';
+
+    test('reads each section into its own list', () {
+      final notes = NotesParser.parse(reply);
+
+      expect(notes.important, hasLength(2));
+      expect(notes.important.first, contains('Section B'));
+
+      expect(notes.assignments, hasLength(2));
+      final report = notes.assignments.first;
+      expect(report.text, 'Lab report 2');
+      expect(report.due, DateTime(2026, 9, 26));
+      expect(report.details, 'submit on the LMS as a PDF · 10 marks');
+      expect(report.done, isFalse);
+      // No box and no date: still an assignment.
+      expect(notes.assignments.last.text, 'Pipeline simulator project');
+      expect(notes.assignments.last.due, isNull);
+
+      expect(notes.quizzes, hasLength(2));
+      expect(notes.quizzes.first.title, 'Quiz 1');
+      expect(notes.quizzes.first.date, DateTime(2026, 9, 24));
+      expect(notes.quizzes.first.details, contains('closed book'));
+      expect(notes.quizzes.last.title, 'Midterm');
+      expect(notes.quizzes.last.date, isNull);
+
+      expect(notes.tasks.single.text, 'Read chapter 4.5');
+      expect(notes.concepts, hasLength(1));
+      expect(notes.deadlines.single.description, 'Guest lecture');
+    });
+
+    test('assignment checkboxes are not also read as tasks', () {
+      final notes = NotesParser.parse('''
+## Assignments
+- [ ] Essay — due 2026-10-01
+''');
+      expect(notes.assignments, hasLength(1));
+      expect(notes.tasks, isEmpty);
+    });
+
+    test('an assignment with no box can still be ticked', () {
+      final notes = NotesParser.parse(reply);
+      final project = notes.assignments.last;
+      final updated = NotesParser.toggleTask(reply, project);
+      final reparsed = NotesParser.parse(updated);
+
+      expect(reparsed.assignments.last.done, isTrue);
+      expect(reparsed.assignments.last.text, 'Pipeline simulator project');
+      expect(reparsed.assignments.first.done, isFalse);
+    });
+
+    test('"None" is an empty section, not an item', () {
+      final notes = NotesParser.parse('''
+## Assignments
+- None
+## Quizzes & Exams
+None mentioned.
+## Important
+- Nothing
+''');
+      expect(notes.assignments, isEmpty);
+      expect(notes.quizzes, isEmpty);
+      expect(notes.important, isEmpty);
+    });
+
+    test('heading synonyms land in the right place', () {
+      final notes = NotesParser.parse('''
+Homework
+ * [ ] Problem set 4 — due 2026-10-02
+Upcoming Tests
+ * 2026-10-05 — Unit test 2
+Announcements
+ * No class on Friday.
+Important Points
+ * Entropy — disorder.
+''');
+      expect(notes.assignments, hasLength(1));
+      expect(notes.quizzes, hasLength(1));
+      expect(notes.important.single, 'No class on Friday.');
       expect(notes.concepts, hasLength(1));
     });
   });

@@ -68,6 +68,30 @@ class HomeTaskRow extends StatelessWidget {
                       const SizedBox(height: 3),
                       Row(
                         children: [
+                          // Graded work wears a tag, so it reads apart from
+                          // reading and practice at a glance.
+                          if (task.isAssignment) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.tintPink,
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: const Text(
+                                'ASSIGNMENT',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.6,
+                                  color: Color(0xFF97245C),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
                           Container(
                             width: 8,
                             height: 8,

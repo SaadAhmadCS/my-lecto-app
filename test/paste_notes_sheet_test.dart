@@ -62,7 +62,7 @@ Deadlines
       reason: 'should report what the parser found',
     );
     expect(find.textContaining('1 task'), findsOneWidget);
-    expect(find.textContaining('1 deadline'), findsOneWidget);
+    expect(find.textContaining('1 other date'), findsOneWidget);
     // Rendered with the same widget the Notes tab uses.
     expect(find.text('Read chapter 4'), findsOneWidget);
   });
@@ -80,8 +80,8 @@ Deadlines
     );
 
     expect(find.textContaining('2 tasks'), findsOneWidget);
-    expect(find.textContaining('1 deadline ·'), findsNothing);
-    expect(find.textContaining('1 deadline'), findsOneWidget);
+    expect(find.textContaining('1 other date ·'), findsNothing);
+    expect(find.textContaining('1 other date'), findsOneWidget);
   });
 
   testWidgets('Save notes confirms', (tester) async {

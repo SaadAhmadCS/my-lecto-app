@@ -159,11 +159,19 @@ class PasteNotesSheet extends StatelessWidget {
     }
 
     final parts = <String>[
+      if (notes.important.isNotEmpty)
+        _count(notes.important.length, 'must-know'),
       if (notes.summary != null) 'summary',
+      if (notes.assignments.isNotEmpty)
+        _count(notes.assignments.length, 'assignment'),
+      if (notes.quizzes.isNotEmpty)
+        notes.quizzes.length == 1
+            ? '1 quiz'
+            : '${notes.quizzes.length} quizzes',
       if (notes.concepts.isNotEmpty) _count(notes.concepts.length, 'concept'),
       if (notes.tasks.isNotEmpty) _count(notes.tasks.length, 'task'),
       if (notes.deadlines.isNotEmpty)
-        _count(notes.deadlines.length, 'deadline'),
+        _count(notes.deadlines.length, 'other date'),
       if (notes.hasTranscript) 'transcript',
     ];
     return 'Found ${parts.join(' · ')}';

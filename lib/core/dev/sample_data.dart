@@ -1,3 +1,5 @@
+import 'package:sqflite/sqflite.dart';
+
 import '../../features/recording/data/local/recording_database.dart';
 
 /// Fills the app with believable lectures for testing the UI.
@@ -57,6 +59,8 @@ class SampleData {
     final stamp = now.subtract(const Duration(days: 30)).toIso8601String();
 
     await db.transaction((txn) async {
+      // A sample course the student's own timetable adopted survived the last
+      // clear; keep it as it is.
       for (final (id, name, color) in _subjects) {
         await txn.insert('subjects', {
           'id': '$_prefix$id',
@@ -64,22 +68,29 @@ class SampleData {
           'color': color,
           'created_at': stamp,
           'updated_at': stamp,
-        });
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
       }
 
-      var n = 0;
-      for (final (subject, weekday, start, end, room, lab) in _timetable) {
-        await txn.insert('timetable_slots', {
-          'id': '${_prefix}slot-${n++}',
-          'subject_id': '$_prefix$subject',
-          'weekday': weekday,
-          'start_minute': _minutes(start),
-          'end_minute': _minutes(end),
-          'room': room,
-          'is_lab': lab ? 1 : 0,
-          'remind': 1,
-          'created_at': stamp,
-        });
+      // Never pile a sample week on top of a timetable the student set up.
+      final hasTimetable = (await txn.query(
+        'timetable_slots',
+        limit: 1,
+      )).isNotEmpty;
+      if (!hasTimetable) {
+        var n = 0;
+        for (final (subject, weekday, start, end, room, lab) in _timetable) {
+          await txn.insert('timetable_slots', {
+            'id': '${_prefix}slot-${n++}',
+            'subject_id': '$_prefix$subject',
+            'weekday': weekday,
+            'start_minute': _minutes(start),
+            'end_minute': _minutes(end),
+            'room': room,
+            'is_lab': lab ? 1 : 0,
+            'remind': 1,
+            'created_at': stamp,
+          });
+        }
       }
 
       for (final lecture in _lectures(now)) {
@@ -102,6 +113,10 @@ class SampleData {
     });
   }
 
+  /// Remove the sample lectures and whatever else is still only sample.
+  ///
+  /// A sample course the student has since put their own classes or
+  /// recordings in is theirs now, and stays — as do those classes.
   static Future<void> clear() async {
     final db = await RecordingDatabase.database;
     await db.transaction((txn) async {
@@ -109,17 +124,14 @@ class SampleData {
         await txn.delete(table, where: "recording_id LIKE '$_prefix%'");
       }
       await txn.delete('recordings', where: "id LIKE '$_prefix%'");
-      // Real recordings made into a sample subject outlive it, in Unsorted.
-      await txn.update('recordings', {
-        'subject_id': RecordingDatabase.unsortedSubjectId,
-      }, where: "subject_id LIKE '$_prefix%'");
+      await txn.delete('timetable_slots', where: "id LIKE '$_prefix%'");
       await txn.delete(
-        'timetable_slots',
+        'subjects',
         where:
             "id LIKE '$_prefix%' "
-            "OR subject_id LIKE '$_prefix%'",
+            'AND id NOT IN (SELECT subject_id FROM timetable_slots) '
+            'AND id NOT IN (SELECT subject_id FROM recordings)',
       );
-      await txn.delete('subjects', where: "id LIKE '$_prefix%'");
     });
   }
 
@@ -179,14 +191,19 @@ Introduced eigenvalues and eigenvectors as the directions a matrix only stretche
 - **Characteristic polynomial** — det(A − λI) = 0; its roots are the eigenvalues.
 - **Diagonalisation** — A = PDP⁻¹, with eigenvectors in P and eigenvalues on D's diagonal.
 
+## Important
+- Quiz 2 is closed book, but one A4 formula sheet is allowed.
+- Office hours move to Thursday 2–4 pm this week only.
+
+## Assignments
+- [ ] Problem set 3 — due ${d(0)} — questions 1–10, handwritten, submit on the LMS as one PDF — 5% of the grade
+
+## Quizzes & Exams
+- ${d(7)} — Quiz 2 — eigenvalues, eigenvectors and diagonalisation — 20 minutes, in class
+
 ## Tasks
-- [ ] Problem set 3, questions 1–10
 - [ ] Diagonalise the 3×3 example from the board
 - [x] Read section 5.1
-
-## Deadlines
-- ${d(0)} — Problem set 3 due
-- ${d(7)} — Quiz 2 on eigenvalues
 ''',
       ),
       _Lecture(
@@ -207,13 +224,18 @@ Showed that every NFA has an equivalent DFA using the subset construction, and w
 - **ε-closure** — every state reachable on empty moves alone.
 - **State explosion** — n NFA states can need up to 2ⁿ DFA states.
 
+## Important
+- "The subset construction will definitely be on the final" — the lecturer said this twice.
+
+## Assignments
+- [ ] Assignment 2 — due ${d(10)} — convert and minimise the automata on sheet 4, groups of two allowed
+
+## Quizzes & Exams
+- ${d(3)} — Quiz 1 — finite automata, NFA to DFA — first 15 minutes of class
+
 ## Tasks
 - [ ] Convert the three NFAs on sheet 4 to DFAs
 - [ ] Minimise the result of question 2
-
-## Deadlines
-- ${d(3)} — Quiz 1 on finite automata
-- ${d(10)} — Assignment 2 submission
 ''',
       ),
       _Lecture(
@@ -260,11 +282,15 @@ Split instruction execution into five stages to overlap instructions, then looke
 - **Forwarding** — passing a result straight from one stage to the next.
 - **Control hazard** — the pipeline does not yet know which way a branch goes.
 
+## Important
+- Lab moves to Room 504 from next week.
+- Bring the MIPS simulator installed on your laptop to every lab.
+
+## Assignments
+- [ ] Lab report 2 — due ${d(5)} — MIPS simulator results, submit on the LMS — 10 marks
+
 ## Tasks
 - [ ] Draw the pipeline diagram for the 6-instruction example
-
-## Deadlines
-- ${d(5)} — Lab report 2 on the MIPS simulator
 ''',
         transcript: '''
 Right, let's start. Last week an instruction ran from start to finish before the next one began. Today we stop doing that.
@@ -294,12 +320,11 @@ Fitted a line by minimising mean squared error, first in closed form and then wi
 - **Gradient descent** — step the weights against the gradient of the loss.
 - **Learning rate** — too high overshoots and diverges; too low crawls.
 
-## Tasks
-- [ ] Assignment 1: implement gradient descent in NumPy
-- [ ] Plot loss against iterations for three learning rates
+## Assignments
+- [ ] Assignment 1 — due ${d(4)} — implement gradient descent in NumPy, submit the notebook — 10% of the grade
 
-## Deadlines
-- ${d(4)} — Assignment 1 submission
+## Tasks
+- [ ] Plot loss against iterations for three learning rates
 ''',
       ),
       _Lecture(

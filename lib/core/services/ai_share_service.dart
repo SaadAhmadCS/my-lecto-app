@@ -49,7 +49,10 @@ class AiShareService {
   static const String summaryHeading = '## Summary';
   static const String conceptsHeading = '## Key Concepts';
   static const String tasksHeading = '## Tasks';
-  static const String deadlinesHeading = '## Deadlines';
+  static const String assignmentsHeading = '## Assignments';
+  static const String quizzesHeading = '## Quizzes & Exams';
+  static const String importantHeading = '## Important';
+  static const String deadlinesHeading = '## Other Dates';
   static const String transcriptHeading = '## Transcript';
 
   /// Build the instruction file that rides along with the audio.
@@ -111,6 +114,46 @@ class AiShareService {
       ..writeln(summaryHeading)
       ..writeln('A short paragraph covering what the lecture was about.')
       ..writeln()
+      ..writeln(importantHeading)
+      ..writeln(
+        '- Anything the student must not miss: announcements, instructions, '
+        'changes to the schedule, rules, where to find or submit things, and '
+        'anything the lecturer stressed — "this will come in the exam", '
+        '"remember this", "don\'t forget". One line each, in the lecturer\'s '
+        'own words where possible.',
+      )
+      ..writeln()
+      ..writeln(assignmentsHeading)
+      ..writeln(
+        '- [ ] Assignment name — due YYYY-MM-DD — how to submit it, marks, '
+        'format, group or individual: whatever was said.',
+      )
+      ..writeln(
+        '- Only GRADED work the lecturer set as an assignment: homework to '
+        'hand in, a lab report, a project, a problem set that counts. If you '
+        'are unsure whether it is graded, and it sounds like it is handed '
+        'in, put it here. Leave every box unticked. Leave out "due …" if no '
+        'date was given.',
+      )
+      ..writeln()
+      ..writeln(quizzesHeading)
+      ..writeln(
+        '- YYYY-MM-DD — Quiz, test or exam name — what it covers, its '
+        'format, how long, what is allowed in, how much it counts: whatever '
+        'was said.',
+      )
+      ..writeln(
+        '- Every quiz, test, midterm, final or viva the lecture mentions, '
+        'even in passing. Put the date first only if one was given.',
+      )
+      ..writeln()
+      ..writeln(tasksHeading)
+      ..writeln(
+        '- [ ] Ungraded work the students were asked to do: reading, '
+        'practice, revising, installing something, looking something up.',
+      )
+      ..writeln('- [ ] One line each. Leave every box unticked.')
+      ..writeln()
       ..writeln(conceptsHeading)
       ..writeln('- **Term** — what it means, as explained in the lecture.')
       ..writeln(
@@ -118,20 +161,15 @@ class AiShareService {
         'definitions; do not add material that was not said.',
       )
       ..writeln()
-      ..writeln(tasksHeading)
-      ..writeln(
-        '- [ ] One line per piece of work the students were asked to '
-        'do.',
-      )
-      ..writeln(
-        '- [ ] Leave every box unticked. Omit this section entirely if '
-        'nothing was assigned.',
-      )
-      ..writeln()
       ..writeln(deadlinesHeading)
       ..writeln(
-        '- YYYY-MM-DD — what is due. One line each, resolved to a real '
-        'date. Omit this section if no dates were mentioned.',
+        '- YYYY-MM-DD — anything else dated that is not an assignment or a '
+        'quiz above. Do not repeat those here.',
+      )
+      ..writeln()
+      ..writeln(
+        'Resolve every date to a real YYYY-MM-DD date. Leave out any '
+        'section with nothing to put in it — never write "None".',
       );
 
     if (askForTranscript) {

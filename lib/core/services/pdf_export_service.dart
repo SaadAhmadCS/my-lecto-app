@@ -1,10 +1,35 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import 'notes_parser.dart';
+
+/// Lecture notes as a PDF, laid out like the app: what not to miss first,
+/// then assignments, quizzes, tasks, key concepts and dates, each in its own
+/// block. Notes that did not follow the expected shape are printed as they
+/// were written.
 class PdfExportService {
+  static const MethodChannel _channel = MethodChannel('com.lecto.lecto/audio');
+
+  // The app's palette, for print.
+  static final _coral = PdfColor.fromHex('#F16743');
+  static final _coralTint = PdfColor.fromHex('#FCEEE8');
+  static final _ink = PdfColor.fromHex('#1C1917');
+  static final _muted = PdfColor.fromHex('#7C756D');
+  static final _border = PdfColor.fromHex('#EFE8DE');
+  static final _pinkTint = PdfColor.fromHex('#FFEBF0');
+  static final _pinkInk = PdfColor.fromHex('#97245C');
+  static final _skyTint = PdfColor.fromHex('#E1F1FF');
+  static final _skyInk = PdfColor.fromHex('#16528E');
+  static final _mintTint = PdfColor.fromHex('#DCF7EA');
+  static final _mintInk = PdfColor.fromHex('#0E6245');
+  static final _lavTint = PdfColor.fromHex('#EFEAFF');
+  static final _lavInk = PdfColor.fromHex('#47368B');
+  static final _creamTint = PdfColor.fromHex('#FEF4DC');
+  static final _creamInk = PdfColor.fromHex('#A66E0A');
+
   static Future<Uint8List> generatePdf({
     required String title,
     String? subjectName,
@@ -14,51 +39,51 @@ class PdfExportService {
     String? transcriptMarkdown,
     bool includeTranscript = false,
   }) async {
+    // Noto Sans rather than the PDF's built-in Helvetica, which only knows
+    // basic Latin: lecture notes are full of dashes, Greek and maths signs
+    // (λ, −, ⁻¹) that Helvetica prints as empty boxes.
+    final regular = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'),
+    );
+    final bold = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSans-Bold.ttf'),
+    );
     final pdf = pw.Document(
-      theme: pw.ThemeData.withFont(
-        base: pw.Font.helvetica(),
-        bold: pw.Font.helveticaBold(),
-      ),
+      title: title,
+      theme: pw.ThemeData.withFont(base: regular, bold: bold, italic: regular),
     );
 
-    final mainColor = PdfColor.fromHex('#818CF8');
+    final notes = NotesParser.parse(summaryMarkdown);
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        header: (context) => _buildHeader(
-          title: title,
-          subjectName: subjectName,
-          recordingDate: recordingDate,
-          duration: duration,
-          mainColor: mainColor,
-        ),
-        footer: (context) => _buildFooter(context),
+        margin: const pw.EdgeInsets.fromLTRB(40, 36, 40, 36),
+        header: (context) => context.pageNumber == 1
+            ? _buildHeader(
+                title: title,
+                subjectName: subjectName,
+                recordingDate: recordingDate,
+                duration: duration,
+              )
+            : pw.SizedBox(),
+        footer: _buildFooter,
         build: (context) {
-          final widgets = <pw.Widget>[];
-
-          widgets.addAll(_parseMarkdown(summaryMarkdown, mainColor));
+          final widgets = notes.isStructured
+              ? _structured(notes)
+              : _parseMarkdown(summaryMarkdown, _coral);
 
           if (includeTranscript &&
               transcriptMarkdown != null &&
               transcriptMarkdown.isNotEmpty) {
-            widgets.add(pw.NewPage());
-            widgets.add(
-              pw.Text(
-                'Full Transcript',
-                style: pw.TextStyle(
-                  fontSize: 18,
-                  fontWeight: pw.FontWeight.bold,
-                  color: mainColor,
-                ),
-              ),
-            );
-            widgets.add(pw.SizedBox(height: 10));
-            widgets.addAll(
-              _parseMarkdown(transcriptMarkdown, mainColor, isTranscript: true),
-            );
+            widgets
+              ..add(pw.NewPage())
+              ..add(_sectionTitle('Full transcript', _coral))
+              ..add(pw.SizedBox(height: 8))
+              ..addAll(
+                _parseMarkdown(transcriptMarkdown, _coral, isTranscript: true),
+              );
           }
-
           return widgets;
         },
       ),
@@ -67,52 +92,358 @@ class PdfExportService {
     return pdf.save();
   }
 
+  static List<pw.Widget> _structured(ParsedNotes notes) {
+    final out = <pw.Widget>[];
+
+    if (notes.important.isNotEmpty) {
+      out.add(
+        pw.Container(
+          padding: const pw.EdgeInsets.all(12),
+          margin: const pw.EdgeInsets.only(bottom: 14),
+          decoration: pw.BoxDecoration(
+            color: _coral,
+            borderRadius: pw.BorderRadius.circular(10),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                "DON'T MISS",
+                style: pw.TextStyle(
+                  fontSize: 9,
+                  fontWeight: pw.FontWeight.bold,
+                  letterSpacing: 1,
+                  color: PdfColors.white,
+                ),
+              ),
+              pw.SizedBox(height: 6),
+              for (final item in notes.important)
+                _bulletLine(item.replaceAll('**', ''), PdfColors.white),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (notes.summary != null) {
+      out.add(
+        _block('Summary', _coralTint, _coral, [
+          pw.Text(
+            notes.summary!,
+            style: pw.TextStyle(fontSize: 11, lineSpacing: 3, color: _ink),
+          ),
+        ]),
+      );
+    }
+
+    if (notes.assignments.isNotEmpty) {
+      out.add(
+        _block('Assignments', _pinkTint, _pinkInk, [
+          for (final a in notes.assignments)
+            _checkItem(
+              a.text,
+              done: a.done,
+              sub: [
+                if (a.due != null) 'Due ${_date(a.due!)}',
+                ?a.details,
+              ].join(' · '),
+              accent: _pinkInk,
+            ),
+        ]),
+      );
+    }
+
+    if (notes.quizzes.isNotEmpty) {
+      out.add(
+        _block('Quizzes & exams', _skyTint, _skyInk, [
+          for (final q in notes.quizzes)
+            _datedItem(q.date, q.title, q.details, _skyInk),
+        ]),
+      );
+    }
+
+    if (notes.tasks.isNotEmpty) {
+      out.add(
+        _block('Tasks', _mintTint, _mintInk, [
+          for (final t in notes.tasks)
+            _checkItem(t.text, done: t.done, accent: _mintInk),
+        ]),
+      );
+    }
+
+    if (notes.concepts.isNotEmpty) {
+      out.add(
+        _block('Key concepts', _lavTint, _lavInk, [
+          for (var i = 0; i < notes.concepts.length; i++)
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 6),
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.SizedBox(
+                    width: 18,
+                    child: pw.Text(
+                      '${i + 1}.',
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                        color: _lavInk,
+                      ),
+                    ),
+                  ),
+                  pw.Expanded(child: _parseRichText(notes.concepts[i])),
+                ],
+              ),
+            ),
+        ]),
+      );
+    }
+
+    if (notes.deadlines.isNotEmpty) {
+      out.add(
+        _block('Other dates', _creamTint, _creamInk, [
+          for (final d in notes.deadlines)
+            _datedItem(d.date, d.description, null, _creamInk),
+        ]),
+      );
+    }
+
+    for (final section in notes.extraSections) {
+      out.add(
+        _block(
+          section.title.isEmpty ? 'Also in the notes' : section.title,
+          PdfColors.white,
+          _muted,
+          _parseMarkdown(section.body, _coral),
+          bordered: true,
+        ),
+      );
+    }
+
+    return out;
+  }
+
+  /// A tinted section with a small capitalised label.
+  static pw.Widget _block(
+    String label,
+    PdfColor tint,
+    PdfColor ink,
+    List<pw.Widget> children, {
+    bool bordered = false,
+  }) {
+    return pw.Container(
+      width: double.infinity,
+      margin: const pw.EdgeInsets.only(bottom: 12),
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        color: tint,
+        borderRadius: pw.BorderRadius.circular(10),
+        border: bordered ? pw.Border.all(color: _border) : null,
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          _sectionTitle(label.toUpperCase(), ink, small: true),
+          pw.SizedBox(height: 8),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _sectionTitle(
+    String text,
+    PdfColor color, {
+    bool small = false,
+  }) => pw.Text(
+    text,
+    style: pw.TextStyle(
+      fontSize: small ? 9 : 16,
+      letterSpacing: small ? 1 : 0,
+      fontWeight: pw.FontWeight.bold,
+      color: color,
+    ),
+  );
+
+  static pw.Widget _bulletLine(String text, PdfColor color) => pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 4),
+    child: pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Container(
+          margin: const pw.EdgeInsets.only(top: 4, right: 7),
+          width: 4,
+          height: 4,
+          decoration: pw.BoxDecoration(color: color, shape: pw.BoxShape.circle),
+        ),
+        pw.Expanded(
+          child: pw.Text(
+            text,
+            style: pw.TextStyle(fontSize: 11, lineSpacing: 2, color: color),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  static pw.Widget _checkItem(
+    String text, {
+    required bool done,
+    required PdfColor accent,
+    String sub = '',
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 7),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Container(
+            margin: const pw.EdgeInsets.only(top: 1, right: 8),
+            width: 10,
+            height: 10,
+            decoration: pw.BoxDecoration(
+              color: done ? accent : PdfColors.white,
+              border: pw.Border.all(color: accent, width: 1),
+              borderRadius: pw.BorderRadius.circular(2),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  text,
+                  style: pw.TextStyle(
+                    fontSize: 11,
+                    fontWeight: pw.FontWeight.bold,
+                    color: done ? _muted : _ink,
+                    decoration: done ? pw.TextDecoration.lineThrough : null,
+                  ),
+                ),
+                if (sub.isNotEmpty)
+                  pw.Text(
+                    sub,
+                    style: pw.TextStyle(fontSize: 9.5, color: accent),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _datedItem(
+    DateTime? date,
+    String title,
+    String? details,
+    PdfColor ink,
+  ) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 7),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 62,
+            child: pw.Text(
+              date == null ? 'Date TBC' : _date(date),
+              style: pw.TextStyle(
+                fontSize: 10,
+                fontWeight: pw.FontWeight.bold,
+                color: ink,
+              ),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  title,
+                  style: pw.TextStyle(
+                    fontSize: 11,
+                    fontWeight: pw.FontWeight.bold,
+                    color: _ink,
+                  ),
+                ),
+                if (details != null)
+                  pw.Text(
+                    details,
+                    style: pw.TextStyle(fontSize: 9.5, color: _muted),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _date(DateTime d) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${d.day} ${months[d.month - 1]} ${d.year}';
+  }
+
   static pw.Widget _buildHeader({
     required String title,
     String? subjectName,
     DateTime? recordingDate,
     Duration? duration,
-    required PdfColor mainColor,
   }) {
-    final dateStr = recordingDate != null
-        ? '${recordingDate.year}-${recordingDate.month.toString().padLeft(2, '0')}-${recordingDate.day.toString().padLeft(2, '0')}'
-        : null;
-
-    final durationStr = duration != null ? '${duration.inMinutes} min' : null;
-
     final meta = [
-      if (subjectName != null && subjectName.isNotEmpty) subjectName,
-      if (dateStr != null) dateStr,
-      if (durationStr != null) durationStr,
-    ].join(' | ');
+      ?subjectName,
+      if (recordingDate != null) _date(recordingDate),
+      if (duration != null && duration.inMinutes > 0)
+        '${duration.inMinutes} min',
+    ].join('  ·  ');
 
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          'Lecto',
-          style: pw.TextStyle(
-            fontSize: 28,
-            fontWeight: pw.FontWeight.bold,
-            color: mainColor,
-          ),
-        ),
-        pw.SizedBox(height: 8),
-        pw.Text(
-          title,
-          style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
-        ),
-        if (meta.isNotEmpty) ...[
-          pw.SizedBox(height: 4),
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(bottom: 16),
+      padding: const pw.EdgeInsets.only(bottom: 12),
+      decoration: pw.BoxDecoration(
+        border: pw.Border(bottom: pw.BorderSide(color: _border, width: 1)),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
           pw.Text(
-            meta,
-            style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
+            'LECTO NOTES',
+            style: pw.TextStyle(
+              fontSize: 9,
+              letterSpacing: 1.5,
+              fontWeight: pw.FontWeight.bold,
+              color: _coral,
+            ),
           ),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            title,
+            style: pw.TextStyle(
+              fontSize: 22,
+              fontWeight: pw.FontWeight.bold,
+              color: _ink,
+            ),
+          ),
+          if (meta.isNotEmpty) ...[
+            pw.SizedBox(height: 4),
+            pw.Text(meta, style: pw.TextStyle(fontSize: 10.5, color: _muted)),
+          ],
         ],
-        pw.SizedBox(height: 12),
-        pw.Divider(color: PdfColors.grey400),
-        pw.SizedBox(height: 12),
-      ],
+      ),
     );
   }
 
@@ -121,8 +452,8 @@ class PdfExportService {
       alignment: pw.Alignment.centerRight,
       margin: const pw.EdgeInsets.only(top: 10),
       child: pw.Text(
-        'Generated by Lecto - Page ${context.pageNumber} of ${context.pagesCount}',
-        style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey500),
+        'Made with Lecto  ·  ${context.pageNumber}/${context.pagesCount}',
+        style: pw.TextStyle(fontSize: 8.5, color: _muted),
       ),
     );
   }
@@ -387,5 +718,29 @@ class PdfExportService {
 
   static Future<void> sharePdf(Uint8List pdfBytes, String filename) async {
     await Printing.sharePdf(bytes: pdfBytes, filename: filename);
+  }
+
+  /// Save straight into the phone's Downloads folder.
+  ///
+  /// Returns false where that is not possible (Android 9 and older, which
+  /// need a storage permission the app does not ask for) — callers then
+  /// fall back to sharing.
+  static Future<bool> saveToDownloads(
+    Uint8List pdfBytes,
+    String filename,
+  ) async {
+    try {
+      final saved = await _channel.invokeMethod<bool>('saveToDownloads', {
+        'bytes': pdfBytes,
+        'filename': filename,
+        'mimeType': 'application/pdf',
+      });
+      return saved ?? false;
+    } on PlatformException catch (e) {
+      debugPrint('PdfExport: could not save (${e.code}) ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
   }
 }

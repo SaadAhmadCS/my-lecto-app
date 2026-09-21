@@ -36,11 +36,14 @@ class StructuredNotesView extends StatelessWidget {
       );
     }
 
-    final done = notes.tasks.where((t) => t.done).length;
+    final tasksDone = notes.tasks.where((t) => t.done).length;
+    final assignmentsDone = notes.assignments.where((t) => t.done).length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
+        // First, so it cannot be scrolled past: what the lecturer stressed.
+        if (notes.important.isNotEmpty) _ImportantCard(items: notes.important),
         if (notes.summary != null)
           _Card(
             tint: AppColors.tintCoral,
@@ -54,6 +57,67 @@ class StructuredNotesView extends StatelessWidget {
                 height: 1.6,
                 color: AppColors.textPrimary,
               ),
+            ),
+          ),
+        if (notes.assignments.isNotEmpty)
+          _Card(
+            tint: AppColors.tintPink,
+            ink: _assignmentInk,
+            icon: Icons.assignment_rounded,
+            label: 'Assignments',
+            trailing: '$assignmentsDone/${notes.assignments.length}',
+            child: Column(
+              children: [
+                for (final assignment in notes.assignments)
+                  _TaskTile(
+                    task: assignment,
+                    accent: _assignmentInk,
+                    onToggle: onToggleTask == null
+                        ? null
+                        : () => onToggleTask!(assignment),
+                  ),
+              ],
+            ),
+          ),
+        if (notes.quizzes.isNotEmpty)
+          _Card(
+            tint: AppColors.tintSky,
+            ink: AppColors.inkSky,
+            icon: Icons.quiz_rounded,
+            label: 'Quizzes & exams',
+            trailing: '${notes.quizzes.length}',
+            child: Column(
+              children: [
+                for (final quiz in notes.quizzes)
+                  _DatedTile(
+                    date: quiz.date,
+                    title: quiz.title,
+                    details: quiz.details,
+                    ink: AppColors.inkSky,
+                    tint: AppColors.tintSky,
+                  ),
+              ],
+            ),
+          ),
+        if (notes.tasks.isNotEmpty)
+          _Card(
+            tint: AppColors.tintMint,
+            ink: AppColors.inkMint,
+            icon: Icons.checklist_rounded,
+            label: 'Tasks',
+            trailing: '$tasksDone/${notes.tasks.length}',
+            child: Column(
+              children: [
+                _Progress(value: tasksDone / notes.tasks.length),
+                const SizedBox(height: 8),
+                for (final task in notes.tasks)
+                  _TaskTile(
+                    task: task,
+                    onToggle: onToggleTask == null
+                        ? null
+                        : () => onToggleTask!(task),
+                  ),
+              ],
             ),
           ),
         if (notes.concepts.isNotEmpty)
@@ -74,37 +138,21 @@ class StructuredNotesView extends StatelessWidget {
               ],
             ),
           ),
-        if (notes.tasks.isNotEmpty)
-          _Card(
-            tint: AppColors.tintMint,
-            ink: AppColors.inkMint,
-            icon: Icons.checklist_rounded,
-            label: 'Tasks',
-            trailing: '$done/${notes.tasks.length}',
-            child: Column(
-              children: [
-                _Progress(value: done / notes.tasks.length),
-                const SizedBox(height: 8),
-                for (final task in notes.tasks)
-                  _TaskTile(
-                    task: task,
-                    onToggle: onToggleTask == null
-                        ? null
-                        : () => onToggleTask!(task),
-                  ),
-              ],
-            ),
-          ),
         if (notes.deadlines.isNotEmpty)
           _Card(
             tint: AppColors.tintCream,
             ink: const Color(0xFFA66E0A),
             icon: Icons.event_rounded,
-            label: 'Deadlines',
+            label: 'Other dates',
             child: Column(
               children: [
                 for (final deadline in notes.deadlines)
-                  _DeadlineTile(deadline: deadline),
+                  _DatedTile(
+                    date: deadline.date,
+                    title: deadline.description,
+                    ink: const Color(0xFFA66E0A),
+                    tint: AppColors.tintCream,
+                  ),
               ],
             ),
           ),
@@ -124,6 +172,101 @@ class StructuredNotesView extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  static const _assignmentInk = Color(0xFF97245C);
+}
+
+/// "Don't miss": the lecturer's announcements and emphasis, in coral.
+class _ImportantCard extends StatelessWidget {
+  final List<String> items;
+
+  const _ImportantCard({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF57049), Color(0xFFEC5A32)],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 18,
+            spreadRadius: -6,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: AppColors.textOnPrimary.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.priority_high_rounded,
+                  size: 18,
+                  color: AppColors.textOnPrimary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                "DON'T MISS",
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                  color: AppColors.textOnPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 7, right: 10),
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: AppColors.textOnPrimary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: SelectableText(
+                      item.replaceAll('**', ''),
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        height: 1.45,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textOnPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -303,14 +446,59 @@ class _Progress extends StatelessWidget {
   }
 }
 
+/// "Today", "Tomorrow", "in 5 d", "Passed" — or null with no date.
+String? _countdown(DateTime? date) {
+  if (date == null) return null;
+  final now = DateTime.now();
+  final days = DateTime(
+    date.year,
+    date.month,
+    date.day,
+  ).difference(DateTime(now.year, now.month, now.day)).inDays;
+  return switch (days) {
+    < 0 => 'Passed',
+    0 => 'Today',
+    1 => 'Tomorrow',
+    _ => 'in $days d',
+  };
+}
+
+/// A tickable task or assignment. Assignments add their due date and the
+/// details the lecture gave (how to submit, marks).
 class _TaskTile extends StatelessWidget {
   final NoteTask task;
   final VoidCallback? onToggle;
 
-  const _TaskTile({required this.task, this.onToggle});
+  /// Colour for the due line; an assignment's pink ink.
+  final Color accent;
+
+  const _TaskTile({
+    required this.task,
+    this.onToggle,
+    this.accent = AppColors.textSecondary,
+  });
+
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final due = task.due;
+    final countdown = _countdown(due);
+    final soon = countdown == 'Today' || countdown == 'Tomorrow';
+
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Material(
@@ -322,6 +510,7 @@ class _TaskTile extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Semantics(
                   checked: task.done,
@@ -347,17 +536,57 @@ class _TaskTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    task.text,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      height: 1.35,
-                      fontWeight: FontWeight.w700,
-                      color: task.done
-                          ? const Color(0xFF958D84)
-                          : AppColors.textPrimary,
-                      decoration: task.done ? TextDecoration.lineThrough : null,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.text,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          height: 1.35,
+                          fontWeight: FontWeight.w700,
+                          color: task.done
+                              ? const Color(0xFF958D84)
+                              : AppColors.textPrimary,
+                          decoration: task.done
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      if (due != null && !task.done) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.event_rounded,
+                              size: 13,
+                              color: soon ? AppColors.primary : accent,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Due ${due.day} ${_months[due.month - 1]}'
+                              ' · $countdown',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: soon ? AppColors.primary : accent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (task.details != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          task.details!,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            height: 1.4,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -369,10 +598,22 @@ class _TaskTile extends StatelessWidget {
   }
 }
 
-class _DeadlineTile extends StatelessWidget {
-  final NoteDeadline deadline;
+/// A dated item — a quiz or another date — with a calendar block, its
+/// details underneath and how far off it is.
+class _DatedTile extends StatelessWidget {
+  final DateTime? date;
+  final String title;
+  final String? details;
+  final Color ink;
+  final Color tint;
 
-  const _DeadlineTile({required this.deadline});
+  const _DatedTile({
+    required this.date,
+    required this.title,
+    required this.ink,
+    required this.tint,
+    this.details,
+  });
 
   static const _months = [
     'JAN',
@@ -391,17 +632,10 @@ class _DeadlineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final date = deadline.date;
-    final now = DateTime.now();
-    final days = date == null
-        ? null
-        : DateTime(
-            date.year,
-            date.month,
-            date.day,
-          ).difference(DateTime(now.year, now.month, now.day)).inDays;
-    final passed = days != null && days < 0;
-    const ink = Color(0xFFA66E0A);
+    final date = this.date;
+    final countdown = _countdown(date);
+    final passed = countdown == 'Passed';
+    final soon = countdown == 'Today' || countdown == 'Tomorrow';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -416,11 +650,11 @@ class _DeadlineTile extends StatelessWidget {
             width: 48,
             height: 50,
             decoration: BoxDecoration(
-              color: passed ? AppColors.surfaceMuted : AppColors.tintCream,
+              color: passed ? AppColors.surfaceMuted : tint,
               borderRadius: BorderRadius.circular(12),
             ),
             child: date == null
-                ? const Icon(Icons.help_outline_rounded, color: ink)
+                ? Icon(Icons.event_busy_rounded, color: ink, size: 20)
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -447,31 +681,49 @@ class _DeadlineTile extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              deadline.description,
-              style: TextStyle(
-                fontSize: 14.5,
-                height: 1.35,
-                fontWeight: FontWeight.w700,
-                color: passed ? AppColors.textMuted : AppColors.textPrimary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    height: 1.35,
+                    fontWeight: FontWeight.w700,
+                    color: passed ? AppColors.textMuted : AppColors.textPrimary,
+                  ),
+                ),
+                if (details != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    details!,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      height: 1.4,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+                if (date == null)
+                  const Text(
+                    'Date not given yet',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+              ],
             ),
           ),
-          if (days != null) ...[
+          if (countdown != null) ...[
             const SizedBox(width: 8),
             Text(
-              switch (days) {
-                < 0 => 'Passed',
-                0 => 'Today',
-                1 => 'Tomorrow',
-                _ => 'in $days d',
-              },
+              countdown,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: days <= 1 && days >= 0
-                    ? AppColors.primary
-                    : AppColors.textSecondary,
+                color: soon ? AppColors.primary : AppColors.textSecondary,
               ),
             ),
           ],

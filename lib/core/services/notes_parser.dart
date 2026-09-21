@@ -1,15 +1,41 @@
-/// One item the students were asked to do.
+/// One item the students were asked to do: a task, or a graded assignment.
 class NoteTask {
+  /// What to do — for an assignment, its name.
   final String text;
   final bool done;
 
   /// Line index in the source markdown, so a tap can rewrite the right line.
   final int lineIndex;
 
+  /// When it is due, if the lecture said. Assignments usually have one.
+  final DateTime? due;
+
+  /// Anything else the lecture said about it: how to submit, marks, format.
+  final String? details;
+
   const NoteTask({
     required this.text,
     required this.done,
     required this.lineIndex,
+    this.due,
+    this.details,
+  });
+}
+
+/// A quiz, test or exam the lecture mentioned.
+class NoteQuiz {
+  final String title;
+  final DateTime? date;
+  final String rawDate;
+
+  /// What it covers, its format, what is allowed in — whatever was said.
+  final String? details;
+
+  const NoteQuiz({
+    required this.title,
+    required this.rawDate,
+    this.date,
+    this.details,
   });
 }
 
@@ -41,7 +67,16 @@ class NoteSection {
 class ParsedNotes {
   final String? summary;
   final List<String> concepts;
+
+  /// Ungraded work: reading, practice, things to look into.
   final List<NoteTask> tasks;
+
+  /// Graded work the lecture set.
+  final List<NoteTask> assignments;
+  final List<NoteQuiz> quizzes;
+
+  /// Announcements, instructions, exam hints — things not to miss.
+  final List<String> important;
   final List<NoteDeadline> deadlines;
   final String? transcript;
 
@@ -54,6 +89,9 @@ class ParsedNotes {
     this.summary,
     this.concepts = const [],
     this.tasks = const [],
+    this.assignments = const [],
+    this.quizzes = const [],
+    this.important = const [],
     this.deadlines = const [],
     this.transcript,
     this.extraSections = const [],
@@ -67,6 +105,9 @@ class ParsedNotes {
       summary != null ||
       concepts.isNotEmpty ||
       tasks.isNotEmpty ||
+      assignments.isNotEmpty ||
+      quizzes.isNotEmpty ||
+      important.isNotEmpty ||
       deadlines.isNotEmpty ||
       extraSections.any((section) => section.title.isNotEmpty);
 
@@ -86,11 +127,15 @@ class NotesParser {
   static final RegExp _markdownHeading = RegExp(
     r'^\s{0,3}(?:#{1,6}\s+(.+?)|\*\*(.+?)\*\*)\s*:?\s*$',
   );
-  static final RegExp _task = RegExp(r'^\s*[-*+]\s*\[( |x|X)\]\s*(.+)$');
-  static final RegExp _bullet = RegExp(r'^\s*[-*+]\s+(.+)$');
+  static final RegExp _task = RegExp(r'^\s*[-*+•]\s*\[( |x|X)\]\s*(.+)$');
+  static final RegExp _bullet = RegExp(r'^\s*[-*+•]\s+(.+)$');
   static final RegExp _leadingDate = RegExp(
-    r'^\s*[-*+]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s*(?:[—–\-:]\s*)?(.*)$',
+    r'^\s*[-*+•]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s*(?:[—–\-:]\s*)?(.*)$',
   );
+  static final RegExp _isoDate = RegExp(r'\d{4}-\d{2}-\d{2}');
+
+  /// " — " between the parts of an item line, as the prompt asks for.
+  static final RegExp _separator = RegExp(r'\s+[—–]\s+|\s+-\s+');
 
   /// Longest a bare line can be and still be treated as a heading.
   static const _maxHeadingChars = 60;
@@ -102,6 +147,9 @@ class NotesParser {
     final summaryLines = <String>[];
     final concepts = <String>[];
     final tasks = <NoteTask>[];
+    final assignments = <NoteTask>[];
+    final quizzes = <NoteQuiz>[];
+    final important = <String>[];
     final deadlines = <NoteDeadline>[];
     final transcriptLines = <String>[];
     final extraSections = <NoteSection>[];
@@ -140,13 +188,8 @@ class NotesParser {
         case _Section.summary:
           if (line.trim().isNotEmpty) summaryLines.add(line.trim());
         case _Section.concepts:
-          final bullet = _bullet.firstMatch(line);
-          if (bullet != null) {
-            concepts.add(bullet.group(1)!.trim());
-          } else if (line.trim().isNotEmpty) {
-            // Some apps drop the bullet marker entirely.
-            concepts.add(line.trim());
-          }
+          final item = _item(line);
+          if (item != null) concepts.add(item);
         case _Section.tasks:
           final task = _task.firstMatch(line);
           if (task != null) {
@@ -158,6 +201,15 @@ class NotesParser {
               ),
             );
           }
+        case _Section.assignments:
+          final assignment = _assignment(line, i);
+          if (assignment != null) assignments.add(assignment);
+        case _Section.quizzes:
+          final quiz = _quiz(line);
+          if (quiz != null) quizzes.add(quiz);
+        case _Section.important:
+          final item = _item(line);
+          if (item != null) important.add(item);
         case _Section.deadlines:
           if (line.trim().isEmpty) continue;
           final dated = _leadingDate.firstMatch(line);
@@ -190,9 +242,12 @@ class NotesParser {
 
     if (section == _Section.other || extraBody.isNotEmpty) flushExtra();
 
-    // Checklist items sometimes appear with no Tasks heading at all.
+    // Checklist items sometimes appear with no Tasks heading at all. Lines
+    // already read as assignments are theirs, not tasks.
     if (tasks.isEmpty) {
+      final taken = {for (final a in assignments) a.lineIndex};
       for (var i = 0; i < lines.length; i++) {
+        if (taken.contains(i)) continue;
         final task = _task.firstMatch(lines[i]);
         if (task != null) {
           tasks.add(
@@ -213,27 +268,129 @@ class NotesParser {
       summary: summaryLines.isEmpty ? null : summaryLines.join('\n'),
       concepts: concepts,
       tasks: tasks,
+      assignments: assignments,
+      quizzes: quizzes,
+      important: important,
       deadlines: deadlines,
       transcript: _isMissingTranscript(transcript) ? null : transcript,
       extraSections: extraSections,
     );
   }
 
+  /// A bullet's text, or the whole line when an app dropped the marker.
+  static String? _item(String line) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) return null;
+    final bullet = _bullet.firstMatch(line);
+    final text = (bullet?.group(1) ?? trimmed).trim();
+    // "None" and friends: the AI saying a section is empty.
+    return _isNothing(text) ? null : text;
+  }
+
+  /// "- [ ] Lab report 3 — due 2026-10-01 — submit on the portal, 10 marks".
+  ///
+  /// The box is optional: an app that drops it still gives an assignment,
+  /// just an unticked one.
+  static NoteTask? _assignment(String line, int index) {
+    final boxed = _task.firstMatch(line);
+    final text = boxed?.group(2)?.trim() ?? _item(line);
+    if (text == null || _isNothing(text)) return null;
+
+    final dateMatch = _isoDate.firstMatch(text);
+    final parts = text
+        .split(_separator)
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return null;
+
+    // The name is the first part that is not just a date.
+    final nameIndex = _isoDate.hasMatch(parts.first) && parts.length > 1
+        ? 1
+        : 0;
+    // A part carrying the due date ("due 2026-10-01") is not a detail.
+    final rest = [
+      for (var i = 0; i < parts.length; i++)
+        if (i != nameIndex && !_isoDate.hasMatch(parts[i])) parts[i],
+    ];
+
+    return NoteTask(
+      text: parts[nameIndex],
+      done: boxed?.group(1)?.toLowerCase() == 'x',
+      lineIndex: index,
+      due: dateMatch == null ? null : DateTime.tryParse(dateMatch.group(0)!),
+      details: rest.isEmpty ? null : rest.join(' · '),
+    );
+  }
+
+  /// "- 2026-09-28 — Quiz 2 on eigenvalues — covers ch 5, closed book".
+  static NoteQuiz? _quiz(String line) {
+    final text = _item(line);
+    if (text == null) return null;
+
+    final dateMatch = _isoDate.firstMatch(text);
+    final parts = text
+        .split(_separator)
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return null;
+
+    final nameIndex = _isoDate.hasMatch(parts.first) && parts.length > 1
+        ? 1
+        : 0;
+    final rest = [
+      for (var i = 0; i < parts.length; i++)
+        if (i != nameIndex &&
+            !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(parts[i]))
+          parts[i],
+    ];
+
+    return NoteQuiz(
+      title: parts[nameIndex],
+      rawDate: dateMatch?.group(0) ?? '',
+      date: dateMatch == null ? null : DateTime.tryParse(dateMatch.group(0)!),
+      details: rest.isEmpty ? null : rest.join(' · '),
+    );
+  }
+
+  static bool _isNothing(String text) {
+    final t = text.toLowerCase().replaceAll(RegExp(r'[^a-z ]'), '').trim();
+    return const {
+      'none',
+      'none mentioned',
+      'nothing',
+      'nothing mentioned',
+      'na',
+      'not mentioned',
+      'no assignments',
+      'no quizzes',
+    }.contains(t);
+  }
+
   /// Flip one checklist item and return the rewritten markdown.
   ///
   /// The markdown stays the source of truth, so a toggle survives into PDF
-  /// export and search with no extra state to keep in step.
+  /// export and search with no extra state to keep in step. A bullet with no
+  /// box (an assignment an app stripped the box from) gains one.
   static String toggleTask(String markdown, NoteTask task) {
     final lines = markdown.split('\n');
     if (task.lineIndex < 0 || task.lineIndex >= lines.length) return markdown;
 
     final line = lines[task.lineIndex];
-    if (_task.firstMatch(line) == null) return markdown;
-
-    lines[task.lineIndex] = line.replaceFirst(
-      RegExp(r'\[( |x|X)\]'),
-      task.done ? '[ ]' : '[x]',
-    );
+    if (_task.firstMatch(line) != null) {
+      lines[task.lineIndex] = line.replaceFirst(
+        RegExp(r'\[( |x|X)\]'),
+        task.done ? '[ ]' : '[x]',
+      );
+    } else if (_bullet.firstMatch(line) != null && !task.done) {
+      lines[task.lineIndex] = line.replaceFirstMapped(
+        RegExp(r'^(\s*[-*+•]\s+)'),
+        (m) => '${m.group(1)}[x] ',
+      );
+    } else {
+      return markdown;
+    }
     return lines.join('\n');
   }
 
@@ -277,24 +434,48 @@ class NotesParser {
   }
 
   /// Match on keywords rather than exact titles, since AI apps rarely use the
-  /// exact heading they were asked for.
+  /// exact heading they were asked for. Order matters: "Important dates" is
+  /// deadlines, not Important.
   static _Section _sectionFor(String name) {
     if (name.isEmpty) return _Section.none;
     bool has(String term) => name.contains(term);
+    bool word(String w) => RegExp('(^| )$w( |\$)').hasMatch(name);
 
     if (has('transcript')) return _Section.transcript;
     if (has('deadline') ||
-        has('due') ||
+        has('due date') ||
         has('important date') ||
-        name == 'dates') {
+        has('other date') ||
+        name == 'dates' ||
+        word('due')) {
       return _Section.deadlines;
     }
-    if (has('task') ||
-        has('action item') ||
+    if (has('assignment') ||
         has('homework') ||
-        has('assignment') ||
-        has('to do') ||
-        has('todo')) {
+        has('coursework') ||
+        has('graded')) {
+      return _Section.assignments;
+    }
+    if (has('quiz') ||
+        word('exam') ||
+        word('exams') ||
+        word('test') ||
+        word('tests') ||
+        has('midterm') ||
+        has('assessment')) {
+      return _Section.quizzes;
+    }
+    // "Important points" are key concepts, not announcements.
+    if ((word('important') && !has('important point')) ||
+        has('announcement') ||
+        has('instruction') ||
+        has('don t miss') ||
+        has('dont miss') ||
+        has('reminder') ||
+        has('heads up')) {
+      return _Section.important;
+    }
+    if (has('task') || has('action item') || has('to do') || has('todo')) {
       return _Section.tasks;
     }
     if (has('concept') ||
@@ -314,4 +495,15 @@ class NotesParser {
   }
 }
 
-enum _Section { none, summary, concepts, tasks, deadlines, transcript, other }
+enum _Section {
+  none,
+  summary,
+  concepts,
+  tasks,
+  assignments,
+  quizzes,
+  important,
+  deadlines,
+  transcript,
+  other,
+}
