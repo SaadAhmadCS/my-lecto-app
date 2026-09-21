@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/services/notes_parser.dart';
+import '../../../../core/constants/user_profile.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
 import '../../../subjects/data/subject_dao.dart';
+import '../../data/home_digest.dart';
 import '../widgets/home_action_card.dart';
+import '../widgets/home_header.dart';
 import '../widgets/home_task_row.dart';
+import '../widgets/upcoming_card.dart';
 
-/// The dashboard: what needs doing, and the four ways in.
+/// The dashboard: what is due, and the four ways in.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -20,14 +24,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final RecordingFeed _feed = context.read<RecordingFeed>();
-  late final RecordingDao _dao = context.read<RecordingDao>();
-  late final SubjectDao _subjectDao = context.read<SubjectDao>();
+  late final HomeDigestBuilder _builder = HomeDigestBuilder(
+    dao: context.read<RecordingDao>(),
+    feed: context.read<RecordingFeed>(),
+    subjects: context.read<SubjectDao>(),
+  );
 
-  List<_DueTask> _tasks = const [];
-  int _subjectCount = 0;
-  int _recordingCount = 0;
-  int _awaitingCount = 0;
+  HomeDigest _digest = const HomeDigest();
+  String _name = '';
   bool _isLoading = true;
 
   @override
@@ -37,63 +41,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _load() async {
-    try {
-      final subjects = await _subjectDao.listSubjects();
-      final recordings = await _feed.list();
-      final awaiting = await _feed.awaitingCount();
-      final tasks = await _collectTasks(recordings);
+    final digest = await _builder.build();
+    final name = await UserProfile.name();
 
-      if (!mounted) return;
-      setState(() {
-        _subjectCount = subjects.length;
-        _recordingCount = recordings.length;
-        _awaitingCount = awaiting;
-        _tasks = tasks;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-    }
-  }
-
-  /// Pull the checklist items out of every recording's notes.
-  ///
-  /// Tasks are not stored separately — they live inside the markdown the AI
-  /// returned, so they are parsed back out on demand.
-  Future<List<_DueTask>> _collectTasks(
-    List<Map<String, dynamic>> recordings,
-  ) async {
-    final collected = <_DueTask>[];
-
-    for (final recording in recordings) {
-      final id = recording['id'] as String;
-      final notes = await _dao.getNotes(id);
-      if (notes == null) continue;
-
-      final parsed = NotesParser.parse(notes.notesMarkdown);
-      final subject = recording['subject'] as Map<String, dynamic>?;
-
-      for (final task in parsed.tasks) {
-        collected.add(_DueTask(
-          text: task.text,
-          done: task.done,
-          recordingId: id,
-          recordingTitle: recording['title'] as String? ?? 'Recording',
-          subjectName: subject?['name'] as String?,
-        ));
-      }
-    }
-
-    // Unfinished work first — that is what the screen is for.
-    collected.sort((a, b) {
-      if (a.done == b.done) return 0;
-      return a.done ? 1 : -1;
+    if (!mounted) return;
+    setState(() {
+      _digest = digest;
+      _name = name;
+      _isLoading = false;
     });
-    return collected;
   }
-
-  int get _openTaskCount => _tasks.where((t) => !t.done).length;
 
   @override
   Widget build(BuildContext context) {
@@ -107,20 +64,30 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg,
-              AppSpacing.base,
+              AppSpacing.md,
               AppSpacing.lg,
-              AppSpacing.huge * 2,
+              AppSpacing.huge * 2.2,
             ),
             children: [
+              HomeHeader(
+                name: _name,
+                streakDays: _digest.streakDays,
+                needsAttention: _digest.awaitingCount,
+                onAvatarTap: _editName,
+                onBellTap: () => context.go('/transcripts'),
+              ),
+              const SizedBox(height: AppSpacing.lg),
               _buildGreeting(context),
               const SizedBox(height: AppSpacing.lg),
-              _buildActionGrid(context),
-              if (_awaitingCount > 0) ...[
+              _buildGrid(context),
+              if (_digest.awaitingCount > 0) ...[
                 const SizedBox(height: AppSpacing.base),
                 _buildAwaitingPill(context),
               ],
               const SizedBox(height: AppSpacing.xl),
-              _buildTasks(context),
+              _buildToday(context),
+              const SizedBox(height: AppSpacing.xl),
+              _buildComingUp(context),
             ],
           ),
         ),
@@ -128,106 +95,118 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// "Hey Saad, 3 things due today." — the one thing worth knowing on open.
   Widget _buildGreeting(BuildContext context) {
-    final now = DateTime.now();
-    final open = _openTaskCount;
+    final theme = Theme.of(context);
+    final due = _digest.openTaskCount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _formatDate(now).toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.textMuted,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-              ),
+          _name.isEmpty ? 'Hey there,' : 'Hey $_name,',
+          style: theme.textTheme.headlineMedium?.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        // The headline states the one thing worth knowing on opening the app.
+        const SizedBox(height: 2),
         RichText(
           text: TextSpan(
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  height: 1.2,
-                ),
+            style: theme.textTheme.displayMedium?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              height: 1.15,
+            ),
             children: _isLoading
-                ? const [TextSpan(text: 'Getting things ready…')]
-                : open > 0
+                ? const [TextSpan(text: 'one moment…')]
+                : due > 0
                     ? [
                         TextSpan(
-                          text: '$open thing${open == 1 ? '' : 's'} ',
+                          text: '$due thing${due == 1 ? '' : 's'} ',
                           style: const TextStyle(color: AppColors.primary),
                         ),
                         const TextSpan(text: 'to do.'),
                       ]
-                    : _recordingCount == 0
-                        ? [const TextSpan(text: 'Record your first lecture.')]
-                        : [const TextSpan(text: 'Nothing due. Nice.')],
+                    : _digest.recordingCount == 0
+                        ? [const TextSpan(text: 'record your first lecture.')]
+                        : [const TextSpan(text: 'nothing due. Nice.')],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildActionGrid(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  /// Four equal tiles, as in the design.
+  Widget _buildGrid(BuildContext context) {
+    final quizzes = _digest.quizzesThisWeek;
+    final tasksDue = _digest.openTaskCount;
+
+    return Column(
       children: [
-        Expanded(
-          child: Column(
-            children: [
-              HomeActionCard(
+        Row(
+          children: [
+            Expanded(
+              child: HomeActionCard(
                 title: 'Record',
                 subtitle: 'Tap to record',
                 icon: Icons.mic_rounded,
                 background: AppColors.primary,
                 foreground: AppColors.textOnPrimary,
-                tall: true,
                 onTap: () => context.push('/record'),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Column(
-            children: [
-              HomeActionCard(
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: HomeActionCard(
                 title: 'Subjects',
-                subtitle: _subjectCount == 1
-                    ? '1 subject'
-                    : '$_subjectCount subjects',
+                subtitle: _digest.subjectCount == 1
+                    ? '1 course'
+                    : '${_digest.subjectCount} courses',
                 icon: Icons.folder_rounded,
                 background: AppColors.tintLavender,
                 foreground: AppColors.inkLavender,
                 onTap: () => context.go('/subjects'),
               ),
-              const SizedBox(height: AppSpacing.md),
-              HomeActionCard(
-                title: 'Lectures',
-                subtitle: _recordingCount == 1
-                    ? '1 recording'
-                    : '$_recordingCount recordings',
-                icon: Icons.graphic_eq_rounded,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: HomeActionCard(
+                title: 'Tasks',
+                subtitle: tasksDue == 0
+                    ? 'All clear'
+                    : '$tasksDue to do',
+                icon: Icons.checklist_rounded,
                 background: AppColors.tintMint,
                 foreground: AppColors.inkMint,
                 onTap: () => context.go('/transcripts'),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: HomeActionCard(
+                title: 'Quizzes',
+                subtitle: quizzes == 0
+                    ? 'None coming up'
+                    : '$quizzes this week',
+                icon: Icons.quiz_rounded,
+                background: AppColors.tintSky,
+                foreground: AppColors.inkSky,
+                onTap: () => context.push(AppRoutes.quizzes).then((_) => _load()),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  /// Nothing else surfaces recordings with no notes — no upload, no
-  /// processing — so without this they pile up unnoticed.
   Widget _buildAwaitingPill(BuildContext context) {
-    final label = _awaitingCount == 1
-        ? '1 recording needs your AI'
-        : '$_awaitingCount recordings need your AI';
+    final count = _digest.awaitingCount;
 
     return InkWell(
       onTap: () => context.go('/transcripts'),
@@ -243,12 +222,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.auto_awesome_rounded,
-                size: 18, color: AppColors.primary),
+            const Icon(Icons.star_rounded, size: 18, color: AppColors.primary),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
-                label,
+                count == 1
+                    ? '1 recording needs your AI'
+                    : '$count recordings need your AI',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.inkCoral,
                       fontWeight: FontWeight.w700,
@@ -263,52 +243,76 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTasks(BuildContext context) {
-    if (_isLoading) {
-      return const Padding(
-        padding: EdgeInsets.only(top: AppSpacing.xxl),
-        child: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      );
-    }
-
-    if (_tasks.isEmpty) return _buildEmptyTasks(context);
-
-    final shown = _tasks.take(5).toList();
+  Widget _buildToday(BuildContext context) {
+    final tasks = _digest.todayTasks;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'To do',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-            if (_tasks.length > shown.length)
-              Text(
-                '${_tasks.length - shown.length} more',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-              ),
-          ],
+        _SectionHeader(
+          title: 'Today',
+          action: tasks.isEmpty ? null : 'View all',
+          onAction: () => context.go('/transcripts'),
         ),
         const SizedBox(height: AppSpacing.md),
-        ...shown.map(
-          (task) => Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: HomeTaskRow(
-              text: task.text,
-              done: task.done,
-              context: task.subjectName ?? task.recordingTitle,
+        if (_isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (tasks.isEmpty)
+          _EmptyPanel(
+            icon: _digest.recordingCount == 0
+                ? Icons.mic_none_rounded
+                : Icons.checklist_rounded,
+            title: _digest.recordingCount == 0
+                ? 'No lectures yet'
+                : 'Nothing to do',
+            body: _digest.recordingCount == 0
+                ? 'Record a lecture, share it to your AI app, then paste the '
+                    'reply back.'
+                : 'Tasks appear here once your AI finds them in a lecture.',
+          )
+        else
+          ...tasks.take(4).map(
+                (task) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: HomeTaskRow(
+                    task: task,
+                    onTap: () => context.push(
+                      '/recording/${task.recordingId}'
+                      '?title=${Uri.encodeComponent(task.recordingTitle)}',
+                    ),
+                  ),
+                ),
+              ),
+      ],
+    );
+  }
+
+  Widget _buildComingUp(BuildContext context) {
+    final items = _digest.futureItems;
+    if (_isLoading || items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader(title: 'Coming up'),
+        const SizedBox(height: AppSpacing.md),
+        SizedBox(
+          height: 132,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+            itemBuilder: (context, index) => UpcomingCard(
+              item: items[index],
               onTap: () => context.push(
-                '/recording/${task.recordingId}'
-                '?title=${Uri.encodeComponent(task.recordingTitle)}',
+                '/recording/${items[index].recordingId}'
+                '?title=${Uri.encodeComponent(items[index].recordingTitle)}',
               ),
             ),
           ),
@@ -317,9 +321,88 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildEmptyTasks(BuildContext context) {
-    final hasRecordings = _recordingCount > 0;
+  /// There is no account, so the name is simply a preference.
+  Future<void> _editName() async {
+    final controller = TextEditingController(text: _name);
 
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('What should I call you?'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(hintText: 'Your name'),
+          onSubmitted: (value) => Navigator.of(ctx).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (name == null) return;
+    await UserProfile.setName(name);
+    if (mounted) setState(() => _name = name.trim());
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String? action;
+  final VoidCallback? onAction;
+
+  const _SectionHeader({required this.title, this.action, this.onAction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        if (action != null)
+          GestureDetector(
+            onTap: onAction,
+            child: Text(
+              action!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _EmptyPanel extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+
+  const _EmptyPanel({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.xl),
@@ -330,26 +413,17 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          Icon(
-            hasRecordings
-                ? Icons.checklist_rounded
-                : Icons.mic_none_rounded,
-            size: 36,
-            color: AppColors.textMuted,
-          ),
+          Icon(icon, size: 34, color: AppColors.textMuted),
           const SizedBox(height: AppSpacing.md),
           Text(
-            hasRecordings ? 'No tasks yet' : 'No lectures yet',
+            title,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            hasRecordings
-                ? 'Tasks appear here once your AI finds them in a lecture.'
-                : 'Record a lecture, share it to your AI app, then paste the '
-                    'reply back.',
+            body,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.textSecondary,
@@ -360,33 +434,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  static String _formatDate(DateTime date) {
-    const days = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday',
-    ];
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
-    ];
-    return '${days[date.weekday - 1]} ${date.day} ${months[date.month - 1]}';
-  }
-}
-
-/// A checklist item, with the lecture it came from.
-class _DueTask {
-  final String text;
-  final bool done;
-  final String recordingId;
-  final String recordingTitle;
-  final String? subjectName;
-
-  const _DueTask({
-    required this.text,
-    required this.done,
-    required this.recordingId,
-    required this.recordingTitle,
-    this.subjectName,
-  });
 }

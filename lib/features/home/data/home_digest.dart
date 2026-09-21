@@ -1,0 +1,277 @@
+import 'package:flutter/foundation.dart';
+
+import '../../../core/services/notes_parser.dart';
+import '../../recording/data/local/recording_dao.dart';
+import '../../recording/data/local/recording_feed.dart';
+import '../../subjects/data/subject_dao.dart';
+
+/// What kind of thing is coming up.
+///
+/// Worked out from the wording of a deadline, since the notes do not label
+/// them. "Quiz on chapter 4" is a quiz; "Lab report 3" is an assignment.
+enum UpcomingKind {
+  quiz('Quiz'),
+  assignment('Assignment'),
+  other('Due');
+
+  const UpcomingKind(this.label);
+  final String label;
+
+  /// Words that mean a quiz on their own.
+  static const _quizWords = [
+    'quiz', 'exam', 'test', 'midterm', 'viva',
+  ];
+
+  /// Words that suggest a quiz but often sit next to an assignment word —
+  /// "final project" is a project, "final exam" is an exam.
+  static const _weakQuizWords = ['final', 'finals', 'paper'];
+
+  static const _assignmentWords = [
+    'assignment', 'report', 'problem set', 'essay', 'submission',
+    'homework', 'project', 'presentation', 'lab',
+  ];
+
+  /// Whole-word match, so "syllabus" is not a lab and "latest" is not a test.
+  static bool _mentions(String text, List<String> words) =>
+      words.any((word) => RegExp(
+            '(?<![a-z])${RegExp.escape(word)}(?![a-z])',
+          ).hasMatch(text));
+
+  static UpcomingKind from(String description) {
+    final text = description.toLowerCase();
+    if (_mentions(text, _quizWords)) return UpcomingKind.quiz;
+    if (_mentions(text, _assignmentWords)) return UpcomingKind.assignment;
+    if (_mentions(text, _weakQuizWords)) return UpcomingKind.quiz;
+    return UpcomingKind.other;
+  }
+}
+
+/// One checklist item, with the lecture it came from.
+class HomeTask {
+  final String text;
+  final bool done;
+  final String recordingId;
+  final String recordingTitle;
+  final String? subjectName;
+
+  /// The nearest deadline from the same lecture, when it had one. Tasks
+  /// themselves carry no date — this is the best available signal.
+  final DateTime? dueAt;
+
+  const HomeTask({
+    required this.text,
+    required this.done,
+    required this.recordingId,
+    required this.recordingTitle,
+    this.subjectName,
+    this.dueAt,
+  });
+
+  bool get isDueToday {
+    final due = dueAt;
+    if (due == null) return false;
+    final now = DateTime.now();
+    return due.year == now.year &&
+        due.month == now.month &&
+        due.day == now.day;
+  }
+}
+
+/// A dated commitment pulled out of a lecture's notes.
+class UpcomingItem {
+  final String title;
+  final DateTime? date;
+  final String rawDate;
+  final UpcomingKind kind;
+  final String recordingId;
+  final String recordingTitle;
+  final String? subjectName;
+
+  const UpcomingItem({
+    required this.title,
+    required this.rawDate,
+    required this.kind,
+    required this.recordingId,
+    required this.recordingTitle,
+    this.date,
+    this.subjectName,
+  });
+
+  /// Whole days from today. Negative once it has passed.
+  int? get daysAway {
+    final due = date;
+    if (due == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return DateTime(due.year, due.month, due.day).difference(today).inDays;
+  }
+}
+
+/// Everything the dashboard shows, gathered in one pass.
+class HomeDigest {
+  final List<HomeTask> tasks;
+  final List<UpcomingItem> upcoming;
+  final int subjectCount;
+  final int recordingCount;
+  final int awaitingCount;
+  final int streakDays;
+
+  const HomeDigest({
+    this.tasks = const [],
+    this.upcoming = const [],
+    this.subjectCount = 0,
+    this.recordingCount = 0,
+    this.awaitingCount = 0,
+    this.streakDays = 0,
+  });
+
+  int get openTaskCount => tasks.where((task) => !task.done).length;
+
+  /// Open tasks, soonest first, with undated ones last.
+  List<HomeTask> get todayTasks {
+    final open = tasks.where((task) => !task.done).toList()
+      ..sort((a, b) {
+        if (a.dueAt == null && b.dueAt == null) return 0;
+        if (a.dueAt == null) return 1;
+        if (b.dueAt == null) return -1;
+        return a.dueAt!.compareTo(b.dueAt!);
+      });
+    // A couple of finished ones give the list a sense of progress.
+    final done = tasks.where((task) => task.done).take(2);
+    return [...open, ...done];
+  }
+
+  /// Still to come, soonest first.
+  List<UpcomingItem> get futureItems {
+    final future = upcoming.where((item) {
+      final days = item.daysAway;
+      return days == null || days >= 0;
+    }).toList()
+      ..sort((a, b) => (a.daysAway ?? 9999).compareTo(b.daysAway ?? 9999));
+    return future;
+  }
+
+  int get quizzesThisWeek => upcoming.where((item) {
+        final days = item.daysAway;
+        return item.kind == UpcomingKind.quiz &&
+            days != null &&
+            days >= 0 &&
+            days <= 7;
+      }).length;
+}
+
+/// Builds the dashboard's data out of the notes already on the device.
+///
+/// Tasks and deadlines are not stored as rows — they live inside the markdown
+/// each AI reply produced — so they are parsed back out on demand.
+class HomeDigestBuilder {
+  final RecordingDao _dao;
+  final RecordingFeed _feed;
+  final SubjectDao _subjects;
+
+  const HomeDigestBuilder({
+    required RecordingDao dao,
+    required RecordingFeed feed,
+    required SubjectDao subjects,
+  })  : _dao = dao,
+        _feed = feed,
+        _subjects = subjects;
+
+  Future<HomeDigest> build() async {
+    try {
+      final subjects = await _subjects.listSubjects();
+      final recordings = await _feed.list();
+      final awaiting = await _feed.awaitingCount();
+
+      final tasks = <HomeTask>[];
+      final upcoming = <UpcomingItem>[];
+
+      for (final recording in recordings) {
+        final id = recording['id'] as String;
+        final notes = await _dao.getNotes(id);
+        if (notes == null) continue;
+
+        final parsed = NotesParser.parse(notes.notesMarkdown);
+        final title = recording['title'] as String? ?? 'Recording';
+        final subject =
+            (recording['subject'] as Map<String, dynamic>?)?['name'] as String?;
+
+        // A lecture's own deadlines are the only date signal its tasks have.
+        final nearest = _nearestDate(parsed.deadlines);
+
+        for (final task in parsed.tasks) {
+          tasks.add(HomeTask(
+            text: task.text,
+            done: task.done,
+            recordingId: id,
+            recordingTitle: title,
+            subjectName: subject,
+            dueAt: task.done ? null : nearest,
+          ));
+        }
+
+        for (final deadline in parsed.deadlines) {
+          upcoming.add(UpcomingItem(
+            title: deadline.description,
+            date: deadline.date,
+            rawDate: deadline.rawDate,
+            kind: UpcomingKind.from(deadline.description),
+            recordingId: id,
+            recordingTitle: title,
+            subjectName: subject,
+          ));
+        }
+      }
+
+      return HomeDigest(
+        tasks: tasks,
+        upcoming: upcoming,
+        subjectCount: subjects.length,
+        recordingCount: recordings.length,
+        awaitingCount: awaiting,
+        streakDays: _streak(recordings),
+      );
+    } catch (e) {
+      debugPrint('HomeDigest: could not build: $e');
+      return const HomeDigest();
+    }
+  }
+
+  static DateTime? _nearestDate(List<NoteDeadline> deadlines) {
+    final dates = deadlines
+        .map((deadline) => deadline.date)
+        .whereType<DateTime>()
+        .toList()
+      ..sort();
+    return dates.isEmpty ? null : dates.first;
+  }
+
+  /// Consecutive days up to today on which something was recorded.
+  ///
+  /// Today having no recording yet does not break a streak — it only ends
+  /// once a whole day passes with nothing.
+  static int _streak(List<Map<String, dynamic>> recordings) {
+    final days = <DateTime>{};
+    for (final recording in recordings) {
+      final created = DateTime.tryParse(recording['createdAt'] as String? ?? '');
+      if (created != null) {
+        days.add(DateTime(created.year, created.month, created.day));
+      }
+    }
+    if (days.isEmpty) return 0;
+
+    final now = DateTime.now();
+    var cursor = DateTime(now.year, now.month, now.day);
+    if (!days.contains(cursor)) {
+      cursor = cursor.subtract(const Duration(days: 1));
+      if (!days.contains(cursor)) return 0;
+    }
+
+    var streak = 0;
+    while (days.contains(cursor)) {
+      streak++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+}

@@ -5,6 +5,7 @@ import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/recording/presentation/screens/recording_detail_screen.dart';
 import '../../features/recording/presentation/screens/recording_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/home/presentation/screens/quizzes_screen.dart';
 import '../../features/subjects/presentation/screens/subject_detail_screen.dart';
 import '../../features/subjects/presentation/screens/subjects_screen.dart';
 import '../../features/transcript/presentation/screens/transcripts_screen.dart';
@@ -21,6 +22,7 @@ class AppRoutes {
   static const String transcripts = '/transcripts';
   static const String settings = '/settings';
   static const String recordingDetail = '/recording/:id';
+  static const String quizzes = '/quizzes';
 }
 
 /// GoRouter configuration.
@@ -75,6 +77,10 @@ class AppRouter {
             builder: (context, state) => RecordingScreen(
               initialSubjectId: state.uri.queryParameters['subjectId'],
             ),
+          ),
+          GoRoute(
+            path: AppRoutes.quizzes,
+            builder: (context, state) => const QuizzesScreen(),
           ),
           GoRoute(
             path: AppRoutes.recordingDetail,

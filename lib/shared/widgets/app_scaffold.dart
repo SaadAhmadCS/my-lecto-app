@@ -22,19 +22,19 @@ class AppScaffold extends StatelessWidget {
       label: 'Home',
     ),
     _NavDestination(
+      route: AppRoutes.transcripts,
+      icon: Icons.bar_chart_rounded,
+      label: 'Lectures',
+    ),
+    _NavDestination(
       route: AppRoutes.subjects,
       icon: Icons.folder_rounded,
       label: 'Subjects',
     ),
     _NavDestination(
-      route: AppRoutes.transcripts,
-      icon: Icons.graphic_eq_rounded,
-      label: 'Lectures',
-    ),
-    _NavDestination(
       route: AppRoutes.settings,
-      icon: Icons.settings_rounded,
-      label: 'Settings',
+      icon: Icons.person_rounded,
+      label: 'You',
     ),
   ];
 
@@ -68,7 +68,6 @@ class AppScaffold extends StatelessWidget {
                 currentIndex: current,
                 onSelected: (index) =>
                     context.go(_destinations[index].route),
-                onRecord: () => context.push(AppRoutes.record),
               ),
             ),
           ),
@@ -94,13 +93,11 @@ class _NavPill extends StatelessWidget {
   final List<_NavDestination> destinations;
   final int currentIndex;
   final ValueChanged<int> onSelected;
-  final VoidCallback onRecord;
 
   const _NavPill({
     required this.destinations,
     required this.currentIndex,
     required this.onSelected,
-    required this.onRecord,
   });
 
   @override
@@ -122,16 +119,12 @@ class _NavPill extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          for (var i = 0; i < destinations.length; i++) ...[
+          for (var i = 0; i < destinations.length; i++)
             _NavItem(
               destination: destinations[i],
               selected: i == currentIndex,
               onTap: () => onSelected(i),
             ),
-            // Recording is the app's whole point, so it sits in the middle of
-            // the bar rather than behind a tab.
-            if (i == 1) _RecordButton(onTap: onRecord),
-          ],
         ],
       ),
     );
@@ -158,48 +151,23 @@ class _NavItem extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(100),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            // The current tab is a filled coral disc, as in the design.
+            color: selected ? AppColors.primary : Colors.transparent,
+            shape: BoxShape.circle,
           ),
           child: Icon(
             destination.icon,
             size: 24,
             color: selected
-                ? AppColors.primaryLight
+                ? AppColors.textOnPrimary
                 : AppColors.textOnPrimary.withValues(alpha: 0.45),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecordButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _RecordButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Record a lecture',
-      button: true,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(100),
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: const BoxDecoration(
-            color: AppColors.primary,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.mic_rounded,
-            size: 24,
-            color: AppColors.textOnPrimary,
           ),
         ),
       ),
