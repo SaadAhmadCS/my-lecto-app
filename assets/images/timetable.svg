@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="calHead" x1="44" y1="52" x2="148" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F57049"/>
+      <stop offset="100%" stop-color="#EC5A32"/>
+    </linearGradient>
+    <linearGradient id="calPage" x1="44" y1="60" x2="148" y2="162" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FFF4E8"/>
+    </linearGradient>
+    <linearGradient id="clockRim" x1="120" y1="112" x2="176" y2="168" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFD66B"/>
+      <stop offset="100%" stop-color="#F0A81F"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient warm glow -->
+  <ellipse cx="100" cy="114" rx="70" ry="48" fill="#F5B32B" fill-opacity="0.13"/>
+
+  <!-- Next week's page peeking out behind -->
+  <rect x="62" y="44" width="96" height="108" rx="16" transform="rotate(8 62 44)" fill="#F57049" fill-opacity="0.18"/>
+
+  <!-- Calendar page -->
+  <rect x="44" y="52" width="104" height="110" rx="16" fill="url(#calPage)"/>
+  <path d="M44 68C44 59.16 51.16 52 60 52H132C140.84 52 148 59.16 148 68V80H44V68Z" fill="url(#calHead)"/>
+  <rect x="60" y="63" width="34" height="5" rx="2.5" fill="#FFFFFF" fill-opacity="0.85"/>
+
+  <!-- Binder rings -->
+  <rect x="68" y="42" width="8" height="20" rx="4" fill="#7A3A22"/>
+  <rect x="116" y="42" width="8" height="20" rx="4" fill="#7A3A22"/>
+
+  <!-- The week's class blocks -->
+  <rect x="56" y="90" width="14" height="12" rx="4" fill="#F57049" fill-opacity="0.16"/>
+  <rect x="78" y="90" width="14" height="12" rx="4" fill="#F57049" fill-opacity="0.16"/>
+  <rect x="100" y="90" width="14" height="12" rx="4" fill="#F5B32B" fill-opacity="0.55"/>
+  <rect x="122" y="90" width="14" height="12" rx="4" fill="#F57049" fill-opacity="0.16"/>
+  <rect x="56" y="108" width="14" height="12" rx="4" fill="#F57049" fill-opacity="0.16"/>
+  <rect x="78" y="108" width="14" height="12" rx="4" fill="#F57049"/>
+  <rect x="100" y="108" width="14" height="12" rx="4" fill="#F57049" fill-opacity="0.16"/>
+  <rect x="56" y="126" width="14" height="12" rx="4" fill="#F57049" fill-opacity="0.16"/>
+  <rect x="78" y="126" width="14" height="12" rx="4" fill="#F57049" fill-opacity="0.16"/>
+  <rect x="56" y="144" width="14" height="10" rx="4" fill="#F57049" fill-opacity="0.1"/>
+
+  <!-- Alarm clock: the reminder -->
+  <circle cx="148" cy="140" r="28" fill="url(#clockRim)"/>
+  <circle cx="148" cy="140" r="21" fill="#FFFFFF"/>
+  <path d="M148 127V140L157 145" stroke="#7A3A22" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="148" cy="140" r="2.6" fill="#7A3A22"/>
+  <path d="M127 116L133 110" stroke="#F0A81F" stroke-width="4" stroke-linecap="round"/>
+  <path d="M169 116L163 110" stroke="#F0A81F" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Sparkles -->
+  <path d="M162 38L164.5 44.5L171 47L164.5 49.5L162 56L159.5 49.5L153 47L159.5 44.5L162 38Z" fill="#F5B32B"/>
+  <path d="M34 72L35.5 76L39.5 77.5L35.5 79L34 83L32.5 79L28.5 77.5L32.5 76L34 72Z" fill="#F57049" fill-opacity="0.75"/>
+</svg>

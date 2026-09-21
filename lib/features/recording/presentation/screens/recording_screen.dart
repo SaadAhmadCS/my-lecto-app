@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../timetable/services/class_reminder_service.dart';
+import '../start_recording.dart';
 import '../widgets/record_subject_sheet.dart';
 import '../widgets/recording_mini_bar.dart';
 
@@ -81,7 +83,7 @@ class _SessionLifecycleState extends State<_SessionLifecycle> {
 
     final subjectId = widget.autoStartSubjectId;
     if (subjectId != null && !_bloc.isActive) {
-      _bloc.add(StartRecordingEvent(subjectId: subjectId));
+      startRecordingIn(context, subjectId);
     }
   }
 
@@ -135,6 +137,8 @@ class _RecordingScreenBody extends StatelessWidget {
       body: BlocConsumer<RecordingBloc, RecordingBlocState>(
         listener: (context, state) {
           if (state is RecordingCompleted) {
+            // Stopped, so "class ended — still recording" would be wrong.
+            context.read<ClassReminderService>().cancelEndNudge();
             _showCompletionDialog(context, state);
           }
           if (state is RecordingError) {
@@ -551,9 +555,7 @@ class _RecordingScreenBody extends StatelessWidget {
   }
 
   void _startRecordingWithSubject(BuildContext context, String subjectId) {
-    context.read<RecordingBloc>().add(
-      StartRecordingEvent(subjectId: subjectId),
-    );
+    startRecordingIn(context, subjectId);
   }
 
   /// Capture a photo using the camera.

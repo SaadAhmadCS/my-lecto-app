@@ -2,7 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../../core/dev/sample_data.dart';
+import '../../../../core/routes/app_router.dart';
+import '../../../timetable/data/timetable_dao.dart';
+import '../../../timetable/services/class_reminder_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/errors/error_messages.dart';
@@ -26,10 +32,9 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Settings',
-          style: Theme.of(context)
-              .textTheme
-              .headlineMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
       body: ListView(
@@ -41,6 +46,9 @@ class SettingsScreen extends StatelessWidget {
           AppSpacing.huge * 2.2,
         ),
         children: [
+          const _TimetableCard(),
+          const SizedBox(height: AppSpacing.xl),
+
           // Read-only facts rather than taps that do nothing. Both are
           // compile-time settings; tapping them used to say "Coming soon".
           _buildSection(
@@ -57,7 +65,8 @@ class SettingsScreen extends StatelessWidget {
               _SettingsTile(
                 icon: Icons.audiotrack_rounded,
                 title: 'Audio quality',
-                subtitle: 'Voice — HE-AAC '
+                subtitle:
+                    'Voice — HE-AAC '
                     '${AppConstants.audioBitRate ~/ 1000}kbps mono, about '
                     '${(AppConstants.audioBitRate / 8 * 3600 / 1000000).round()}MB an hour',
               ),
@@ -125,10 +134,10 @@ class SettingsScreen extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppColors.textTertiaryDark,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
+            color: AppColors.textTertiaryDark,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
         ),
         const SizedBox(height: AppSpacing.sm),
         Container(
@@ -189,14 +198,14 @@ class _SettingsTile extends StatelessWidget {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiaryDark,
-                        ),
+                      color: AppColors.textTertiaryDark,
+                    ),
                   ),
                 ],
               ),
@@ -271,7 +280,6 @@ class _TranscriptionLanguageTileState
   }
 }
 
-
 /// Frees the merged copies made when sharing a lecture.
 ///
 /// Merging a long lecture writes a second copy of its audio, so this can grow
@@ -342,6 +350,96 @@ class _ClearCacheTileState extends State<_ClearCacheTile> {
   }
 }
 
+/// The way into the timetable, with a one-line summary of it.
+class _TimetableCard extends StatefulWidget {
+  const _TimetableCard();
+
+  @override
+  State<_TimetableCard> createState() => _TimetableCardState();
+}
+
+class _TimetableCardState extends State<_TimetableCard> {
+  static const _ink = Color(0xFF7A5B0B);
+
+  String _summary = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final timetable = context.read<TimetableDao>();
+    final reminders = context.read<ClassReminderService>();
+    final slots = await timetable.list();
+    final on = await reminders.isEnabled();
+    if (!mounted) return;
+    setState(() {
+      _summary = slots.isEmpty
+          ? 'Get a nudge to record when class starts'
+          : '${slots.length} class${slots.length == 1 ? '' : 'es'} a week · '
+                'reminders ${on ? 'on' : 'off'}';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.tintYellow,
+      borderRadius: BorderRadius.circular(21),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () async {
+          await context.push(AppRoutes.timetable);
+          if (mounted) _load();
+        },
+        child: SizedBox(
+          height: 96,
+          child: Row(
+            children: [
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Timetable',
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _summary,
+                      maxLines: 2,
+                      style: TextStyle(
+                        color: _ink.withValues(alpha: 0.75),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SvgPicture.asset(
+                'assets/images/timetable.svg',
+                width: 88,
+                height: 88,
+              ),
+              const Icon(Icons.chevron_right_rounded, color: _ink),
+              const SizedBox(width: 10),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Loads or removes the dummy lectures in [SampleData].
 class _SampleDataTile extends StatefulWidget {
   const _SampleDataTile();
@@ -367,7 +465,10 @@ class _SampleDataTileState extends State<_SampleDataTile> {
     setState(() => _isWorking = true);
 
     final loading = !_loaded;
+    final reminders = context.read<ClassReminderService>();
     await (loading ? SampleData.seed() : SampleData.clear());
+    // The sample timetable comes and goes with it.
+    await reminders.reschedule();
     if (!mounted) return;
 
     setState(() {
@@ -376,9 +477,7 @@ class _SampleDataTileState extends State<_SampleDataTile> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          loading ? 'Sample data loaded.' : 'Sample data removed.',
-        ),
+        content: Text(loading ? 'Sample data loaded.' : 'Sample data removed.'),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -391,7 +490,7 @@ class _SampleDataTileState extends State<_SampleDataTile> {
       title: _loaded ? 'Remove sample data' : 'Load sample data',
       subtitle: _loaded
           ? 'Deletes the dummy lectures · your own are kept'
-          : '5 subjects, 8 lectures with notes, tasks and deadlines',
+          : 'BCS-6A: 6 courses, the weekly timetable and 8 lectures',
       onTap: _isWorking ? null : _toggle,
     );
   }

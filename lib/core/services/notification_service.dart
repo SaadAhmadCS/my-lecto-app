@@ -1,15 +1,20 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Local notifications for processing results (IMP-06).
+/// Local notifications: "recording saved" updates and class reminders.
 ///
-/// The payload of every notification is a recording ID; tapping one calls
-/// [onRecordingTapped].
+/// Every notification carries a payload, and tapping one calls [onTapped]
+/// with it. A recording ID opens that recording; class reminders use the
+/// payloads defined in `ClassReminderService`.
 class NotificationService {
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
 
-  /// Opens a recording; set once the router exists.
-  void Function(String recordingId)? onRecordingTapped;
+  /// The shared plugin, for services that schedule their own notifications.
+  FlutterLocalNotificationsPlugin get plugin => _plugin;
+
+  /// Handles a tapped notification's payload; set once the router exists.
+  void Function(String payload)? onTapped;
 
   bool _permissionRequested = false;
 
@@ -32,14 +37,14 @@ class NotificationService {
         ),
       ),
       onDidReceiveNotificationResponse: (response) {
-        final recordingId = response.payload;
-        if (recordingId != null) onRecordingTapped?.call(recordingId);
+        final payload = response.payload;
+        if (payload != null) onTapped?.call(payload);
       },
     );
   }
 
-  /// Recording ID of the notification that launched the app, if any.
-  Future<String?> launchRecordingId() async {
+  /// Payload of the notification that launched the app, if any.
+  Future<String?> launchPayload() async {
     final details = await _plugin.getNotificationAppLaunchDetails();
     if (details?.didNotificationLaunchApp != true) return null;
     return details!.notificationResponse?.payload;
@@ -53,11 +58,13 @@ class NotificationService {
     try {
       await _plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.requestNotificationsPermission();
       await _plugin
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
+            IOSFlutterLocalNotificationsPlugin
+          >()
           ?.requestPermissions(alert: true, sound: true);
     } catch (e) {
       debugPrint('NotificationService: permission request failed: $e');

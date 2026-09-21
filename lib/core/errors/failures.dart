@@ -17,11 +17,7 @@ abstract class Failure extends Equatable {
 class ServerFailure extends Failure {
   final int? statusCode;
 
-  const ServerFailure({
-    required super.message,
-    super.code,
-    this.statusCode,
-  });
+  const ServerFailure({required super.message, super.code, this.statusCode});
 }
 
 class CacheFailure extends Failure {
@@ -29,27 +25,17 @@ class CacheFailure extends Failure {
 }
 
 class NetworkFailure extends Failure {
-  const NetworkFailure({
-    super.message = 'No internet connection',
-    super.code,
-  });
+  const NetworkFailure({super.message = 'No internet connection', super.code});
 }
 
 class RecordingFailure extends Failure {
-  const RecordingFailure({
-    required super.message,
-    super.code,
-  });
+  const RecordingFailure({required super.message, super.code});
 }
 
 class StorageFailure extends Failure {
   final int? availableMB;
 
-  const StorageFailure({
-    required super.message,
-    super.code,
-    this.availableMB,
-  });
+  const StorageFailure({required super.message, super.code, this.availableMB});
 }
 
 class PermissionFailure extends Failure {

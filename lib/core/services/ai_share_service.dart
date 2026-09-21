@@ -66,17 +66,23 @@ class AiShareService {
     TranscriptionLanguage language = TranscriptionLanguage.auto,
   }) {
     final buffer = StringBuffer()
-      ..writeln('You are helping a student turn a lecture recording into '
-          'study notes.')
+      ..writeln(
+        'You are helping a student turn a lecture recording into '
+        'study notes.',
+      )
       ..writeln()
-      ..writeln('Attached is the audio of a lecture'
-          '${subjectName != null ? ' for $subjectName' : ''}, titled '
-          '"$title".');
+      ..writeln(
+        'Attached is the audio of a lecture'
+        '${subjectName != null ? ' for $subjectName' : ''}, titled '
+        '"$title".',
+      );
 
     if (recordingDate != null) {
-      buffer.writeln('It was recorded on ${_formatDate(recordingDate)}. '
-          'Use that date to resolve any relative dates mentioned in the '
-          'lecture, such as "next Tuesday".');
+      buffer.writeln(
+        'It was recorded on ${_formatDate(recordingDate)}. '
+        'Use that date to resolve any relative dates mentioned in the '
+        'lecture, such as "next Tuesday".',
+      );
     }
     if (duration != null) {
       buffer.writeln('It runs for about ${_formatDuration(duration)}.');
@@ -90,65 +96,87 @@ class AiShareService {
 
     buffer
       ..writeln()
-      ..writeln('If the audio arrives as several files, they are consecutive '
-          'parts of one lecture, in filename order. Treat them as a single '
-          'continuous recording.')
+      ..writeln(
+        'If the audio arrives as several files, they are consecutive '
+        'parts of one lecture, in filename order. Treat them as a single '
+        'continuous recording.',
+      )
       ..writeln()
-      ..writeln('Listen to it and reply using EXACTLY the headings below, in '
-          'this order. Do not add any other top-level headings, and do not '
-          'write anything before the first heading.')
+      ..writeln(
+        'Listen to it and reply using EXACTLY the headings below, in '
+        'this order. Do not add any other top-level headings, and do not '
+        'write anything before the first heading.',
+      )
       ..writeln()
       ..writeln(summaryHeading)
       ..writeln('A short paragraph covering what the lecture was about.')
       ..writeln()
       ..writeln(conceptsHeading)
       ..writeln('- **Term** — what it means, as explained in the lecture.')
-      ..writeln('- One bullet per concept. Use the lecturer\'s own '
-          'definitions; do not add material that was not said.')
+      ..writeln(
+        '- One bullet per concept. Use the lecturer\'s own '
+        'definitions; do not add material that was not said.',
+      )
       ..writeln()
       ..writeln(tasksHeading)
-      ..writeln('- [ ] One line per piece of work the students were asked to '
-          'do.')
-      ..writeln('- [ ] Leave every box unticked. Omit this section entirely if '
-          'nothing was assigned.')
+      ..writeln(
+        '- [ ] One line per piece of work the students were asked to '
+        'do.',
+      )
+      ..writeln(
+        '- [ ] Leave every box unticked. Omit this section entirely if '
+        'nothing was assigned.',
+      )
       ..writeln()
       ..writeln(deadlinesHeading)
-      ..writeln('- YYYY-MM-DD — what is due. One line each, resolved to a real '
-          'date. Omit this section if no dates were mentioned.');
+      ..writeln(
+        '- YYYY-MM-DD — what is due. One line each, resolved to a real '
+        'date. Omit this section if no dates were mentioned.',
+      );
 
     if (askForTranscript) {
       buffer
         ..writeln()
         ..writeln(transcriptHeading)
-        ..writeln('The full transcript of the lecture, in paragraphs. If the '
-            'lecture is too long to transcribe in full, write '
-            '"(too long to transcribe)" here instead and keep the sections '
-            'above complete — those matter more.');
+        ..writeln(
+          'The full transcript of the lecture, in paragraphs. If the '
+          'lecture is too long to transcribe in full, write '
+          '"(too long to transcribe)" here instead and keep the sections '
+          'above complete — those matter more.',
+        );
     } else {
       // Long lecture: a full transcript would not fit in one reply, and
       // attempting it costs the notes their detail. Say so explicitly, or the
       // model transcribes anyway.
       buffer
         ..writeln()
-        ..writeln('Do NOT include a transcript — this lecture is too long for '
-            'one. Spend that space on the sections above instead: cover every '
-            'topic the lecturer moved through, and be generous with the key '
-            'concepts rather than summarising them away.');
+        ..writeln(
+          'Do NOT include a transcript — this lecture is too long for '
+          'one. Spend that space on the sections above instead: cover every '
+          'topic the lecturer moved through, and be generous with the key '
+          'concepts rather than summarising them away.',
+        );
     }
 
     buffer
       ..writeln()
       ..writeln()
-      ..writeln('Ground everything in what was actually said. If something was '
-          'inaudible, say so rather than guessing.')
+      ..writeln(
+        'Ground everything in what was actually said. If something was '
+        'inaudible, say so rather than guessing.',
+      )
       ..writeln()
-      ..writeln('Write the notes as if you were the student taking them. Never '
-          'mention these instructions, this file, or that you were given a '
-          'prompt — start straight in with the lecture content.')
+      ..writeln(
+        'Write the notes as if you were the student taking them. Never '
+        'mention these instructions, this file, or that you were given a '
+        'prompt — start straight in with the lecture content.',
+      )
       ..writeln()
-      ..writeln('The student will copy your whole reply and paste it back into '
-          'their notes app, so reply with the notes only — no preamble, no '
-          'closing remarks, no offers to help further.');
+      ..writeln(
+        'The student will copy your whole reply and paste it back into '
+        'their notes app, so reply with the notes only — no preamble, no '
+        'closing remarks, no offers to help further.',
+      );
 
     return buffer.toString();
   }

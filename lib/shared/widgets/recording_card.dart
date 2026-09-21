@@ -19,15 +19,23 @@ enum RecordingSort {
     final sorted = [...recordings];
     switch (this) {
       case RecordingSort.date:
-        sorted.sort((a, b) =>
-            (b['createdAt'] as String? ?? '').compareTo(a['createdAt'] as String? ?? ''));
+        sorted.sort(
+          (a, b) => (b['createdAt'] as String? ?? '').compareTo(
+            a['createdAt'] as String? ?? '',
+          ),
+        );
       case RecordingSort.title:
-        sorted.sort((a, b) => (a['title'] as String? ?? '')
-            .toLowerCase()
-            .compareTo((b['title'] as String? ?? '').toLowerCase()));
+        sorted.sort(
+          (a, b) => (a['title'] as String? ?? '').toLowerCase().compareTo(
+            (b['title'] as String? ?? '').toLowerCase(),
+          ),
+        );
       case RecordingSort.duration:
-        sorted.sort((a, b) =>
-            (b['totalDurationMs'] as int? ?? 0).compareTo(a['totalDurationMs'] as int? ?? 0));
+        sorted.sort(
+          (a, b) => (b['totalDurationMs'] as int? ?? 0).compareTo(
+            a['totalDurationMs'] as int? ?? 0,
+          ),
+        );
     }
     return sorted;
   }
@@ -94,7 +102,8 @@ class RecordingCard extends StatelessWidget {
     final status = recording['processingStatus'] as String? ?? 'pending';
     final createdAt = recording['createdAt'] as String?;
     final durationMs = recording['totalDurationMs'] as int? ?? 0;
-    final chunkCount = (recording['_count'] as Map<String, dynamic>?)?['chunks'] as int? ?? 0;
+    final chunkCount =
+        (recording['_count'] as Map<String, dynamic>?)?['chunks'] as int? ?? 0;
     final subject = recording['subject'] as Map<String, dynamic>?;
 
     final statusInfo = _getStatusInfo(status);
@@ -123,8 +132,8 @@ class RecordingCard extends StatelessWidget {
                     child: Text(
                       title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -150,8 +159,10 @@ class RecordingCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Color(
                       int.parse(
-                        (subject['color'] as String? ?? '#6366F1')
-                            .replaceFirst('#', '0xFF'),
+                        (subject['color'] as String? ?? '#6366F1').replaceFirst(
+                          '#',
+                          '0xFF',
+                        ),
                       ),
                     ).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
@@ -159,14 +170,14 @@ class RecordingCard extends StatelessWidget {
                   child: Text(
                     subject['name'] as String? ?? '',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Color(
-                            int.parse(
-                              (subject['color'] as String? ?? '#6366F1')
-                                  .replaceFirst('#', '0xFF'),
-                            ),
-                          ),
-                          fontWeight: FontWeight.w500,
+                      color: Color(
+                        int.parse(
+                          (subject['color'] as String? ?? '#6366F1')
+                              .replaceFirst('#', '0xFF'),
                         ),
+                      ),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -175,36 +186,45 @@ class RecordingCard extends StatelessWidget {
               // Meta row
               Row(
                 children: [
-                  Icon(Icons.schedule_rounded,
-                      size: 14, color: AppColors.textTertiaryDark),
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 14,
+                    color: AppColors.textTertiaryDark,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     timeAgo,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiaryDark,
-                        ),
+                      color: AppColors.textTertiaryDark,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.base),
                   if (duration.inSeconds > 0) ...[
-                    Icon(Icons.timer_outlined,
-                        size: 14, color: AppColors.textTertiaryDark),
+                    Icon(
+                      Icons.timer_outlined,
+                      size: 14,
+                      color: AppColors.textTertiaryDark,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       formatRecordingDuration(duration),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textTertiaryDark,
-                          ),
+                        color: AppColors.textTertiaryDark,
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.base),
                   ],
-                  Icon(Icons.layers_outlined,
-                      size: 14, color: AppColors.textTertiaryDark),
+                  Icon(
+                    Icons.layers_outlined,
+                    size: 14,
+                    color: AppColors.textTertiaryDark,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '$chunkCount chunks',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiaryDark,
-                        ),
+                      color: AppColors.textTertiaryDark,
+                    ),
                   ),
                 ],
               ),
@@ -218,15 +238,27 @@ class RecordingCard extends StatelessWidget {
   _StatusInfo _getStatusInfo(String status) {
     switch (status) {
       case 'completed':
-        return _StatusInfo('Ready', AppColors.success, Icons.check_circle_rounded);
+        return _StatusInfo(
+          'Ready',
+          AppColors.success,
+          Icons.check_circle_rounded,
+        );
       case 'transcribing':
       case 'transcribed':
       case 'assembling':
       case 'assembled':
       case 'summarizing':
-        return _StatusInfo('Processing', AppColors.info, Icons.autorenew_rounded);
+        return _StatusInfo(
+          'Processing',
+          AppColors.info,
+          Icons.autorenew_rounded,
+        );
       case 'pending':
-        return _StatusInfo('Queued', AppColors.warning, Icons.hourglass_empty_rounded);
+        return _StatusInfo(
+          'Queued',
+          AppColors.warning,
+          Icons.hourglass_empty_rounded,
+        );
       // Kept on this device, waiting for the student's own AI app.
       case 'awaiting_paste':
         return _StatusInfo(
@@ -237,9 +269,17 @@ class RecordingCard extends StatelessWidget {
       case 'failed_transcription':
       case 'failed_assembly':
       case 'failed_summary':
-        return _StatusInfo('Failed', AppColors.error, Icons.error_outline_rounded);
+        return _StatusInfo(
+          'Failed',
+          AppColors.error,
+          Icons.error_outline_rounded,
+        );
       default:
-        return _StatusInfo('New', AppColors.textTertiaryDark, Icons.fiber_new_rounded);
+        return _StatusInfo(
+          'New',
+          AppColors.textTertiaryDark,
+          Icons.fiber_new_rounded,
+        );
     }
   }
 
@@ -300,9 +340,9 @@ class _StatusBadge extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

@@ -16,8 +16,9 @@ class ErrorMessages {
   /// when the error itself says nothing more useful.
   static String from(Object error, {String? action}) {
     debugPrint('Error${action == null ? '' : ' ($action)'}: $error');
-    final fallback =
-        action == null ? generic : 'Couldn\'t $action. Please try again.';
+    final fallback = action == null
+        ? generic
+        : 'Couldn\'t $action. Please try again.';
 
     return switch (error) {
       // Nothing here talks to a server, but file and storage work still
@@ -44,8 +45,8 @@ class ErrorMessages {
   }
 
   static String? _platform(String code) => switch (code) {
-        'merge_failed' => 'Couldn\'t join the audio for this recording.',
-        'bad_args' => generic,
-        _ => null,
-      };
+    'merge_failed' => 'Couldn\'t join the audio for this recording.',
+    'bad_args' => generic,
+    _ => null,
+  };
 }

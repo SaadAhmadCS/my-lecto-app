@@ -50,7 +50,9 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
       if (mounted) {
         setState(() => _isGenerating = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ErrorMessages.from(e, action: 'create the PDF'))),
+          SnackBar(
+            content: Text(ErrorMessages.from(e, action: 'create the PDF')),
+          ),
         );
       }
     }
@@ -86,9 +88,9 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
           const SizedBox(height: AppSpacing.xl),
           Text(
             'Export Notes',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(

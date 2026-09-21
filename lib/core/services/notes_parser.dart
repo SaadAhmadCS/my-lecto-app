@@ -150,27 +150,33 @@ class NotesParser {
         case _Section.tasks:
           final task = _task.firstMatch(line);
           if (task != null) {
-            tasks.add(NoteTask(
-              text: task.group(2)!.trim(),
-              done: task.group(1)!.toLowerCase() == 'x',
-              lineIndex: i,
-            ));
+            tasks.add(
+              NoteTask(
+                text: task.group(2)!.trim(),
+                done: task.group(1)!.toLowerCase() == 'x',
+                lineIndex: i,
+              ),
+            );
           }
         case _Section.deadlines:
           if (line.trim().isEmpty) continue;
           final dated = _leadingDate.firstMatch(line);
           if (dated != null && dated.group(2)!.trim().isNotEmpty) {
-            deadlines.add(NoteDeadline(
-              rawDate: dated.group(1)!,
-              description: dated.group(2)!.trim(),
-              date: DateTime.tryParse(dated.group(1)!),
-            ));
+            deadlines.add(
+              NoteDeadline(
+                rawDate: dated.group(1)!,
+                description: dated.group(2)!.trim(),
+                date: DateTime.tryParse(dated.group(1)!),
+              ),
+            );
           } else {
             final bullet = _bullet.firstMatch(line);
-            deadlines.add(NoteDeadline(
-              rawDate: '',
-              description: (bullet?.group(1) ?? line).trim(),
-            ));
+            deadlines.add(
+              NoteDeadline(
+                rawDate: '',
+                description: (bullet?.group(1) ?? line).trim(),
+              ),
+            );
           }
         case _Section.transcript:
           transcriptLines.add(line);
@@ -189,11 +195,13 @@ class NotesParser {
       for (var i = 0; i < lines.length; i++) {
         final task = _task.firstMatch(lines[i]);
         if (task != null) {
-          tasks.add(NoteTask(
-            text: task.group(2)!.trim(),
-            done: task.group(1)!.toLowerCase() == 'x',
-            lineIndex: i,
-          ));
+          tasks.add(
+            NoteTask(
+              text: task.group(2)!.trim(),
+              done: task.group(1)!.toLowerCase() == 'x',
+              lineIndex: i,
+            ),
+          );
         }
       }
     }
@@ -275,7 +283,9 @@ class NotesParser {
     bool has(String term) => name.contains(term);
 
     if (has('transcript')) return _Section.transcript;
-    if (has('deadline') || has('due') || has('important date') ||
+    if (has('deadline') ||
+        has('due') ||
+        has('important date') ||
         name == 'dates') {
       return _Section.deadlines;
     }

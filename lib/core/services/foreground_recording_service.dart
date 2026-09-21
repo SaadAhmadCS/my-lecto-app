@@ -2,7 +2,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 class ForegroundRecordingService {
   static bool _isRunning = false;
-  
+
   /// Initialize the foreground task configuration. Call once at app startup.
   static void init() {
     FlutterForegroundTask.init(
@@ -26,7 +26,7 @@ class ForegroundRecordingService {
       ),
     );
   }
-  
+
   /// Start the foreground service. Call when recording starts.
   static Future<void> startService() async {
     if (_isRunning) return;
@@ -36,7 +36,7 @@ class ForegroundRecordingService {
       notificationText: 'Recording in progress...',
     );
   }
-  
+
   /// Update notification text with duration.
   static Future<void> updateDuration(Duration duration) async {
     if (!_isRunning) return;
@@ -48,13 +48,13 @@ class ForegroundRecordingService {
       notificationText: 'Duration: $hours:$minutes:$seconds',
     );
   }
-  
+
   /// Stop the foreground service. Call when recording stops.
   static Future<void> stopService() async {
     if (!_isRunning) return;
     _isRunning = false;
     await FlutterForegroundTask.stopService();
   }
-  
+
   static bool get isRunning => _isRunning;
 }

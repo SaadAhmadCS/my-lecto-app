@@ -12,6 +12,11 @@
     <!-- Prevent CPU sleep during recording -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Class reminders: keep them scheduled across reboots, and fire them on
+         the minute when the user allows exact alarms (Android 12+ asks). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <application
         android:label="My Lecto"
         android:name="${applicationName}"
@@ -42,6 +47,20 @@
             android:foregroundServiceType="microphone"
             android:exported="false">
         </service>
+
+        <!-- Scheduled class reminders, and restoring them after a reboot -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

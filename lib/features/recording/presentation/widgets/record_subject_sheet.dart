@@ -5,6 +5,9 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../subjects/data/subject_dao.dart';
 import '../../../subjects/presentation/widgets/create_subject_sheet.dart';
+import '../../../timetable/data/class_slot.dart';
+import '../../../timetable/data/timetable_dao.dart';
+import '../../../../shared/widgets/primary_pill_button.dart';
 import '../../data/local/recording_database.dart';
 
 /// "Which subject is this?" — asked once, right before recording starts.
@@ -38,12 +41,17 @@ class RecordSubjectSheet extends StatefulWidget {
 
 class _RecordSubjectSheetState extends State<RecordSubjectSheet> {
   late final SubjectDao _subjectDao = context.read<SubjectDao>();
+  late final TimetableDao _timetable = context.read<TimetableDao>();
 
   List<Map<String, dynamic>> _subjects = const [];
   String? _selectedId;
 
   /// The most recently recorded subject, which gets the "last recorded" line.
   String? _recentId;
+
+  /// The class on right now, per the timetable. Its subject is pre-selected
+  /// and marked, since that is almost certainly what is being recorded.
+  ClassSlot? _inClass;
   bool _isLoading = true;
 
   @override
@@ -62,25 +70,41 @@ class _RecordSubjectSheetState extends State<RecordSubjectSheet> {
       subjects = const [];
     }
 
-    // Most recently recorded first; never-recorded ones keep name order.
+    ClassSlot? inClass;
+    try {
+      inClass = await _timetable.activeAt(DateTime.now());
+    } catch (_) {}
+
+    // The class on now first, then most recently recorded; never-recorded
+    // ones keep name order.
+    int rank(Map<String, dynamic> s) => s['id'] == inClass?.subjectId ? 1 : 0;
     final byRecent = [...subjects]
-      ..sort(
-        (a, b) => (b['lastRecordedAt'] as String? ?? '').compareTo(
+      ..sort((a, b) {
+        final byClass = rank(b).compareTo(rank(a));
+        if (byClass != 0) return byClass;
+        return (b['lastRecordedAt'] as String? ?? '').compareTo(
           a['lastRecordedAt'] as String? ?? '',
-        ),
-      );
-    final recent =
-        byRecent.isNotEmpty && byRecent.first['lastRecordedAt'] != null
-        ? byRecent.first['id'] as String
-        : null;
+        );
+      });
+    final withHistory =
+        byRecent.where((s) => s['lastRecordedAt'] != null).toList()..sort(
+          (a, b) => (b['lastRecordedAt'] as String).compareTo(
+            a['lastRecordedAt'] as String,
+          ),
+        );
+    final recent = withHistory.isEmpty
+        ? null
+        : withHistory.first['id'] as String;
 
     if (!mounted) return;
     setState(() {
       _subjects = byRecent;
       _recentId = recent;
+      _inClass = inClass;
       _selectedId =
           select ??
           _selectedId ??
+          inClass?.subjectId ??
           recent ??
           (subjects.isEmpty ? null : subjects.first['id'] as String);
       _isLoading = false;
@@ -145,6 +169,9 @@ class _RecordSubjectSheetState extends State<RecordSubjectSheet> {
                               subject: subject,
                               selected: subject['id'] == _selectedId,
                               isRecent: subject['id'] == _recentId,
+                              inClass: subject['id'] == _inClass?.subjectId
+                                  ? _inClass
+                                  : null,
                               onTap: () => setState(
                                 () => _selectedId = subject['id'] as String,
                               ),
@@ -174,7 +201,11 @@ class _RecordSubjectSheetState extends State<RecordSubjectSheet> {
                     ),
             ),
             const SizedBox(height: 10),
-            _StartButton(onPressed: _isLoading ? null : _start),
+            PrimaryPillButton(
+              label: 'Start recording',
+              icon: Icons.mic_rounded,
+              onPressed: _isLoading ? null : _start,
+            ),
             const SizedBox(height: 10),
             Text(
               'Saves in ${AppConstants.defaultChunkDurationMinutes}-min chunks'
@@ -257,6 +288,9 @@ class _SubjectOption extends StatelessWidget {
   final Map<String, dynamic> subject;
   final bool selected;
   final bool isRecent;
+
+  /// This subject's class, when it is on right now.
+  final ClassSlot? inClass;
   final VoidCallback onTap;
 
   const _SubjectOption({
@@ -264,6 +298,7 @@ class _SubjectOption extends StatelessWidget {
     required this.selected,
     required this.isRecent,
     required this.onTap,
+    this.inClass,
   });
 
   @override
@@ -276,7 +311,13 @@ class _SubjectOption extends StatelessWidget {
       subject['lastRecordedAt'] as String? ?? '',
     );
 
-    final subtitle = isRecent && lastRecorded != null
+    final klass = inClass;
+    final subtitle = klass != null
+        ? [
+            klass.isLab ? 'Lab on now' : 'On now',
+            if (klass.room != null) klass.room!,
+          ].join(' · ')
+        : isRecent && lastRecorded != null
         ? 'Last recorded ${_relative(lastRecorded)}'
         : count == 0
         ? 'No recordings yet'
@@ -299,6 +340,7 @@ class _SubjectOption extends StatelessWidget {
         ),
       ),
       title: subject['name'] as String? ?? 'Untitled',
+      badge: klass == null ? null : 'IN CLASS',
       subtitle: subtitle,
       trailing: _Radio(selected: selected),
     );
@@ -366,6 +408,9 @@ class _OptionFrame extends StatelessWidget {
   final VoidCallback onTap;
   final Widget leading;
   final String title;
+
+  /// A small coral chip beside the title, e.g. "IN CLASS".
+  final String? badge;
   final String subtitle;
   final Widget trailing;
 
@@ -376,6 +421,7 @@ class _OptionFrame extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.trailing,
+    this.badge,
   });
 
   @override
@@ -406,14 +452,47 @@ class _OptionFrame extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        if (badge != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.35,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              badge!,
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -462,66 +541,6 @@ class _Radio extends StatelessWidget {
               color: AppColors.textOnPrimary,
             )
           : null,
-    );
-  }
-}
-
-class _StartButton extends StatelessWidget {
-  final VoidCallback? onPressed;
-
-  const _StartButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    // The glow lives on an outer box: drawn by Ink it gets clipped to the
-    // ink layer and shows as a pale rectangle.
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(100),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.30),
-            blurRadius: 24,
-            spreadRadius: -6,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: Ink(
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFF57049), Color(0xFFEC5A32)],
-            ),
-            borderRadius: BorderRadius.circular(100),
-          ),
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(100),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.mic_rounded,
-                  color: AppColors.textOnPrimary,
-                  size: 20,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Start recording',
-                  style: TextStyle(
-                    color: AppColors.textOnPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

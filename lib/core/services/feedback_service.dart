@@ -33,16 +33,15 @@ class FeedbackService {
       ..writeln('Device: ${_deviceLabel()}');
 
     if (recordingCount != null) {
-      buffer.writeln('Recordings: $recordingCount'
-          '${awaitingCount != null ? ' ($awaitingCount without notes)' : ''}');
+      buffer.writeln(
+        'Recordings: $recordingCount'
+        '${awaitingCount != null ? ' ($awaitingCount without notes)' : ''}',
+      );
     }
 
     try {
       await SharePlus.instance.share(
-        ShareParams(
-          text: buffer.toString(),
-          subject: 'My Lecto feedback',
-        ),
+        ShareParams(text: buffer.toString(), subject: 'My Lecto feedback'),
       );
     } catch (e) {
       debugPrint('Feedback: could not open the share sheet: $e');

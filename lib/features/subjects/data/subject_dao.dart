@@ -105,6 +105,12 @@ class SubjectDao {
         where: 'subject_id = ?',
         whereArgs: [id],
       );
+      // A class with no subject has nothing to record into.
+      await txn.delete(
+        'timetable_slots',
+        where: 'subject_id = ?',
+        whereArgs: [id],
+      );
       await txn.delete('subjects', where: 'id = ?', whereArgs: [id]);
     });
   }

@@ -7,12 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// [auto] it says nothing and lets the AI work it out, which handles lectures
 /// that switch between languages mid-sentence.
 enum TranscriptionLanguage {
-  auto(
-    'auto',
-    'Auto-detect',
-    'Best for lectures that mix languages',
-    null,
-  ),
+  auto('auto', 'Auto-detect', 'Best for lectures that mix languages', null),
   english(
     'en',
     'English',
@@ -44,9 +39,9 @@ enum TranscriptionLanguage {
   static const _prefKey = 'transcriptionLanguage';
 
   static TranscriptionLanguage fromCode(String? code) => values.firstWhere(
-        (language) => language.code == code,
-        orElse: () => TranscriptionLanguage.auto,
-      );
+    (language) => language.code == code,
+    orElse: () => TranscriptionLanguage.auto,
+  );
 
   static Future<TranscriptionLanguage> load() async {
     final prefs = await SharedPreferences.getInstance();

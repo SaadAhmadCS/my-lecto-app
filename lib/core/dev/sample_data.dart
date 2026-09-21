@@ -6,26 +6,46 @@ import '../../features/recording/data/local/recording_database.dart';
 /// is keyed with [_prefix], so [clear] removes exactly what [seed] added and
 /// never touches real recordings.
 ///
-/// Dates are relative to today, so tasks, deadlines and the streak always look
-/// current. Sample lectures have notes but no audio: sharing one to an AI app
-/// reports that there is nothing to send.
+/// Modelled on a real BCS-6A timetable: its six courses, its weekly classes
+/// (rooms, labs and a free Thursday included) and a lecture from each. Lecture
+/// dates follow the timetable, and deadlines are relative to today, so tasks,
+/// quizzes and reminders always look current. Sample lectures have notes but
+/// no audio: sharing one to an AI app reports that there is nothing to send.
 class SampleData {
   SampleData._();
 
   static const _prefix = 'sample-';
 
   static const _subjects = [
-    ('calculus', 'Calculus II', '#5244e3'),
-    ('physics', 'Physics', '#2e78e6'),
-    ('orgchem', 'Organic Chemistry', '#128b62'),
-    ('dsa', 'Data Structures', '#f16743'),
-    ('english', 'English Literature', '#d946a6'),
+    ('la', 'Linear Algebra', '#5244e3'),
+    ('cyber', 'Intro to Cyber Security', '#dc2626'),
+    ('toa', 'Theory of Automata', '#7c3aed'),
+    ('arch', 'Intro to Computer Architecture', '#0e7490'),
+    ('ml', 'Machine Learning Fundamentals', '#128b62'),
+    ('db', 'Advanced Database Systems', '#2e78e6'),
+  ];
+
+  /// (subject, weekday, start, end, room, lab)
+  static const _timetable = [
+    ('la', DateTime.monday, '08:30', '10:00', 'G-09', false),
+    ('cyber', DateTime.monday, '11:00', '13:00', 'G-08', false),
+    ('la', DateTime.monday, '13:30', '15:00', 'G-11', false),
+    ('toa', DateTime.monday, '15:00', '16:30', 'F-02', false),
+    ('arch', DateTime.tuesday, '09:00', '10:30', '504', true),
+    ('ml', DateTime.tuesday, '11:00', '13:00', 'B-19', false),
+    ('db', DateTime.tuesday, '13:30', '16:30', 'Lab-4', true),
+    ('db', DateTime.wednesday, '08:30', '10:30', 'F-11', false),
+    ('arch', DateTime.wednesday, '11:00', '13:00', 'G-01', false),
+    ('ml', DateTime.wednesday, '13:30', '16:30', 'Lab-9', true),
+    ('cyber', DateTime.friday, '08:30', '11:30', 'Lab-2', true),
+    ('arch', DateTime.friday, '11:30', '13:00', 'Lab-9', true),
+    ('toa', DateTime.friday, '15:00', '16:30', 'F-05', false),
   ];
 
   static Future<bool> isLoaded() async {
     final db = await RecordingDatabase.database;
     final rows = await db.rawQuery(
-      "SELECT 1 FROM recordings WHERE id LIKE '$_prefix%' LIMIT 1",
+      "SELECT 1 FROM subjects WHERE id LIKE '$_prefix%' LIMIT 1",
     );
     return rows.isNotEmpty;
   }
@@ -34,23 +54,36 @@ class SampleData {
     await clear();
     final db = await RecordingDatabase.database;
     final now = DateTime.now();
+    final stamp = now.subtract(const Duration(days: 30)).toIso8601String();
 
     await db.transaction((txn) async {
       for (final (id, name, color) in _subjects) {
-        final at = now.subtract(const Duration(days: 30)).toIso8601String();
         await txn.insert('subjects', {
           'id': '$_prefix$id',
           'name': name,
           'color': color,
-          'created_at': at,
-          'updated_at': at,
+          'created_at': stamp,
+          'updated_at': stamp,
+        });
+      }
+
+      var n = 0;
+      for (final (subject, weekday, start, end, room, lab) in _timetable) {
+        await txn.insert('timetable_slots', {
+          'id': '${_prefix}slot-${n++}',
+          'subject_id': '$_prefix$subject',
+          'weekday': weekday,
+          'start_minute': _minutes(start),
+          'end_minute': _minutes(end),
+          'room': room,
+          'is_lab': lab ? 1 : 0,
+          'remind': 1,
+          'created_at': stamp,
         });
       }
 
       for (final lecture in _lectures(now)) {
-        final created = now
-            .subtract(Duration(days: lecture.daysAgo))
-            .copyWith(hour: lecture.hour, minute: 10);
+        final created = _lastClass(now, lecture.weekday, lecture.start);
         await txn.insert('recordings', {
           'id': '$_prefix${lecture.id}',
           'subject_id': '$_prefix${lecture.subject}',
@@ -61,8 +94,9 @@ class SampleData {
           'updated_at': created.toIso8601String(),
           'notes_markdown': lecture.notes,
           'transcript_markdown': lecture.transcript,
-          'notes_updated_at':
-              lecture.notes == null ? null : created.toIso8601String(),
+          'notes_updated_at': lecture.notes == null
+              ? null
+              : created.toIso8601String(),
         });
       }
     });
@@ -75,12 +109,50 @@ class SampleData {
         await txn.delete(table, where: "recording_id LIKE '$_prefix%'");
       }
       await txn.delete('recordings', where: "id LIKE '$_prefix%'");
+      // Real recordings made into a sample subject outlive it, in Unsorted.
+      await txn.update('recordings', {
+        'subject_id': RecordingDatabase.unsortedSubjectId,
+      }, where: "subject_id LIKE '$_prefix%'");
+      await txn.delete(
+        'timetable_slots',
+        where:
+            "id LIKE '$_prefix%' "
+            "OR subject_id LIKE '$_prefix%'",
+      );
       await txn.delete('subjects', where: "id LIKE '$_prefix%'");
     });
   }
 
+  static int _minutes(String hhmm) {
+    final parts = hhmm.split(':');
+    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  }
+
+  /// The most recent time this class met: today if it has started already,
+  /// otherwise the same weekday last week.
+  static DateTime _lastClass(DateTime now, int weekday, String start) {
+    final minute = _minutes(start);
+    var date = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      minute ~/ 60,
+      minute % 60 + 10,
+    );
+    while (date.weekday != weekday || date.isAfter(now)) {
+      date = DateTime(
+        date.year,
+        date.month,
+        date.day - 1,
+        date.hour,
+        date.minute,
+      );
+    }
+    return date;
+  }
+
   static String _day(DateTime now, int offset) {
-    final d = DateTime(now.year, now.month, now.day).add(Duration(days: offset));
+    final d = DateTime(now.year, now.month, now.day + offset);
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-'
         '${d.day.toString().padLeft(2, '0')}';
   }
@@ -90,176 +162,183 @@ class SampleData {
 
     return [
       _Lecture(
-        id: 'calc-1',
-        subject: 'calculus',
-        title: 'Integration by parts',
-        daysAgo: 0,
-        hour: 9,
-        minutes: 52,
-        notes: '''
+        id: 'la-1',
+        subject: 'la',
+        weekday: DateTime.monday,
+        start: '08:30',
+        title: 'Eigenvalues and eigenvectors',
+        minutes: 86,
+        notes:
+            '''
 ## Summary
-Integration by parts turns the integral of a product into something easier, using the product rule in reverse. The lecture worked through choosing u and dv with the LIATE rule and finished with repeated application for e^x sin x.
+Introduced eigenvalues and eigenvectors as the directions a matrix only stretches. Worked through finding them from the characteristic polynomial, then used them to diagonalise a 2×2 matrix.
 
 ## Key Concepts
-- **Integration by parts** — ∫u dv = uv − ∫v du, the product rule run backwards.
-- **LIATE** — pick u in the order Logarithmic, Inverse trig, Algebraic, Trig, Exponential.
-- **Cyclic integrals** — applying the rule twice can return the original integral, which you then solve for algebraically.
-- **Tabular method** — a shortcut when u differentiates to zero after a few steps.
+- **Eigenvector** — a non-zero vector v with Av = λv; A only scales it.
+- **Eigenvalue** — the scale factor λ for that eigenvector.
+- **Characteristic polynomial** — det(A − λI) = 0; its roots are the eigenvalues.
+- **Diagonalisation** — A = PDP⁻¹, with eigenvectors in P and eigenvalues on D's diagonal.
 
 ## Tasks
-- [ ] Finish problem set 4, questions 1–12
-- [ ] Rework the e^x sin x example without notes
-- [x] Read section 7.1
+- [ ] Problem set 3, questions 1–10
+- [ ] Diagonalise the 3×3 example from the board
+- [x] Read section 5.1
 
 ## Deadlines
-- ${d(0)} — Problem set 4 due
-- ${d(3)} — Quiz on integration by parts
+- ${d(0)} — Problem set 3 due
+- ${d(7)} — Quiz 2 on eigenvalues
 ''',
       ),
       _Lecture(
-        id: 'phys-1',
-        subject: 'physics',
-        title: 'Newton\'s laws in rotating frames',
-        daysAgo: 1,
-        hour: 11,
-        minutes: 75,
-        notes: '''
+        id: 'toa-1',
+        subject: 'toa',
+        weekday: DateTime.friday,
+        start: '15:00',
+        title: 'From NFA to DFA',
+        minutes: 84,
+        notes:
+            '''
 ## Summary
-Extended Newton's laws to non-inertial, rotating frames by introducing fictitious forces. Covered centrifugal and Coriolis forces with examples from weather systems and a turntable demo.
+Showed that every NFA has an equivalent DFA using the subset construction, and worked an example that grew from 3 states to 5. Ended on why ε-closures are needed first.
 
 ## Key Concepts
-- **Inertial frame** — a frame where Newton's first law holds without extra forces.
-- **Centrifugal force** — the outward fictitious force felt in a rotating frame, mω²r.
-- **Coriolis force** — −2m(ω × v), deflects moving objects sideways in a rotating frame.
-- **Foucault pendulum** — its plane of swing rotates, showing Earth's rotation.
+- **NFA** — may have several moves, or none, on a symbol; accepts if any path accepts.
+- **Subset construction** — each DFA state is a set of NFA states.
+- **ε-closure** — every state reachable on empty moves alone.
+- **State explosion** — n NFA states can need up to 2ⁿ DFA states.
 
 ## Tasks
-- [ ] Lab report draft for the turntable experiment
-- [ ] Watch the Foucault pendulum video on the course page
+- [ ] Convert the three NFAs on sheet 4 to DFAs
+- [ ] Minimise the result of question 2
 
 ## Deadlines
-- ${d(0)} — Lab report draft
-- ${d(4)} — Lab report 3 final submission
+- ${d(3)} — Quiz 1 on finite automata
+- ${d(10)} — Assignment 2 submission
 ''',
       ),
       _Lecture(
-        id: 'chem-1',
-        subject: 'orgchem',
-        title: 'SN1 vs SN2 reactions',
-        daysAgo: 2,
-        hour: 14,
+        id: 'db-1',
+        subject: 'db',
+        weekday: DateTime.wednesday,
+        start: '08:30',
+        title: 'Indexing with B+ trees',
+        minutes: 112,
+        notes:
+            '''
+## Summary
+Covered why indexes speed up lookups, how a B+ tree keeps every leaf at the same depth, and what splits and merges do on insert and delete.
+
+## Key Concepts
+- **Index** — a separate structure that finds rows without scanning the table.
+- **B+ tree** — balanced tree where data pointers live only in the linked leaves.
+- **Fan-out** — children per node; high fan-out keeps the tree shallow.
+- **Clustered index** — the table is stored in index order; only one per table.
+
+## Tasks
+- [ ] Insert keys 5–40 into an order-4 B+ tree by hand
+- [x] Read chapter 14
+
+## Deadlines
+- ${d(9)} — Midterm exam
+''',
+      ),
+      _Lecture(
+        id: 'arch-1',
+        subject: 'arch',
+        weekday: DateTime.wednesday,
+        start: '11:00',
+        title: 'Pipelining and hazards',
         minutes: 24,
-        notes: '''
+        notes:
+            '''
 ## Summary
-Compared the two nucleophilic substitution mechanisms: SN2 is one concerted step with inversion, SN1 goes through a carbocation and gives a racemic mix.
+Split instruction execution into five stages to overlap instructions, then looked at the three hazards that stall a pipeline and how forwarding fixes most data hazards.
 
 ## Key Concepts
-- **SN2** — bimolecular, one step, backside attack, inversion of configuration.
-- **SN1** — unimolecular, carbocation intermediate, favoured by tertiary substrates.
-- **Leaving group** — weaker bases leave more easily; I⁻ > Br⁻ > Cl⁻.
-- **Solvent effects** — polar protic favours SN1, polar aprotic favours SN2.
+- **Pipelining** — overlapping fetch, decode, execute, memory and write-back.
+- **Data hazard** — an instruction needs a result that is not written yet.
+- **Forwarding** — passing a result straight from one stage to the next.
+- **Control hazard** — the pipeline does not yet know which way a branch goes.
 
 ## Tasks
-- [x] Read chapter 7
-- [ ] Mechanism practice sheet
+- [ ] Draw the pipeline diagram for the 6-instruction example
 
 ## Deadlines
-- ${d(6)} — Midterm exam
+- ${d(5)} — Lab report 2 on the MIPS simulator
 ''',
         transcript: '''
-Okay, let's get started. Last time we finished with alkyl halides, and today we're asking what happens when a nucleophile comes along.
+Right, let's start. Last week an instruction ran from start to finish before the next one began. Today we stop doing that.
 
-There are two ways this can go. In the first, the nucleophile attacks at the same time as the leaving group leaves. We call that SN2 — substitution, nucleophilic, bimolecular — because the rate depends on both the substrate and the nucleophile.
+Think of a laundry. You don't wait for one load to dry before you start washing the next. Same idea here: five stages — fetch, decode, execute, memory, write-back — and a new instruction enters every cycle.
 
-The second way is stepwise. The leaving group goes first, you get a carbocation, and then the nucleophile comes in. That's SN1, and its rate depends only on the substrate.
+But there's a catch. Say the second instruction needs the result of the first. The first hasn't written it back yet. That's a data hazard, and without help the pipeline has to stall.
 
-So which one happens? Look at the substrate first. Methyl and primary go SN2. Tertiary goes SN1, because the carbocation is stable and the back is too crowded to attack. Secondary is the awkward one — it depends on the solvent and the nucleophile.
+The help is forwarding. The result exists at the end of execute, so we pass it straight across instead of waiting for write-back. That fixes most cases. Loads are the exception — we'll see why next week.
 ''',
       ),
       _Lecture(
-        id: 'dsa-1',
-        subject: 'dsa',
-        title: 'Hash tables and collisions',
-        daysAgo: 3,
-        hour: 10,
-        minutes: 68,
-        notes: '''
+        id: 'ml-1',
+        subject: 'ml',
+        weekday: DateTime.tuesday,
+        start: '11:00',
+        title: 'Linear regression and gradient descent',
+        minutes: 108,
+        notes:
+            '''
 ## Summary
-How hash tables get O(1) average lookups, what happens when two keys land in the same bucket, and why the load factor decides when to resize.
+Fitted a line by minimising mean squared error, first in closed form and then with gradient descent. Spent time on how the learning rate decides whether training converges.
 
 ## Key Concepts
-- **Hash function** — maps a key to a bucket index; should spread keys evenly.
-- **Chaining** — each bucket holds a list of entries that collided.
-- **Open addressing** — on a collision, probe for the next free slot.
-- **Load factor** — entries ÷ buckets; resize when it passes about 0.75.
+- **Linear regression** — predicts y as a weighted sum of the features plus a bias.
+- **Mean squared error** — the average squared gap between prediction and truth.
+- **Gradient descent** — step the weights against the gradient of the loss.
+- **Learning rate** — too high overshoots and diverges; too low crawls.
 
 ## Tasks
-- [ ] Implement a hash map with chaining in Java
-- [ ] Assignment 2: benchmark chaining vs linear probing
+- [ ] Assignment 1: implement gradient descent in NumPy
+- [ ] Plot loss against iterations for three learning rates
 
 ## Deadlines
-- ${d(5)} — Assignment 2 submission
-- ${d(10)} — Quiz 2 on hashing and trees
+- ${d(4)} — Assignment 1 submission
 ''',
       ),
       _Lecture(
-        id: 'eng-1',
-        subject: 'english',
-        title: 'Symbolism in The Great Gatsby',
-        daysAgo: 4,
-        hour: 13,
-        minutes: 55,
+        id: 'cyber-1',
+        subject: 'cyber',
+        weekday: DateTime.monday,
+        start: '11:00',
+        title: 'The CIA triad and threat models',
+        minutes: 104,
         notes: '''
 ## Summary
-Discussed the green light, the valley of ashes and Dr T. J. Eckleburg's eyes as symbols of longing, moral decay and a watching, absent God.
+Defined security through confidentiality, integrity and availability, then built a simple threat model for a university portal: assets, attackers and likely attacks.
 
 ## Key Concepts
-- **The green light** — Gatsby's hope and the unreachable past.
-- **Valley of ashes** — the grey cost of the wealthy's carelessness.
-- **Eckleburg's eyes** — a billboard read as a god looking down on a godless world.
+- **Confidentiality** — only the right people can read it.
+- **Integrity** — nobody can change it without it being noticed.
+- **Availability** — it is there when it is needed.
+- **Threat model** — what you protect, from whom, and how they would attack.
 
 ## Tasks
-- [ ] Essay outline on one symbol, 500 words
-
-## Deadlines
-- ${d(8)} — Essay submission
-''',
-      ),
-      _Lecture(
-        id: 'calc-0',
-        subject: 'calculus',
-        title: 'Substitution rule review',
-        daysAgo: 5,
-        hour: 9,
-        minutes: 48,
-        notes: '''
-## Summary
-Reviewed u-substitution for definite and indefinite integrals, including changing the limits instead of substituting back.
-
-## Key Concepts
-- **u-substitution** — reverse of the chain rule; set u to the inner function.
-- **Changing limits** — convert the bounds to u-values and never substitute back.
-
-## Tasks
-- [x] Problem set 3
+- [ ] Write a one-page threat model for your bank's app
 ''',
       ),
       // Two still waiting for notes, for the "needs your AI" strip.
       _Lecture(
-        id: 'phys-2',
-        subject: 'physics',
-        title: 'Angular momentum',
-        daysAgo: 0,
-        hour: 15,
-        minutes: 41,
+        id: 'ml-2',
+        subject: 'ml',
+        weekday: DateTime.wednesday,
+        start: '13:30',
+        title: 'Lab: scikit-learn pipelines',
+        minutes: 162,
       ),
       _Lecture(
-        id: 'dsa-2',
-        subject: 'dsa',
-        title: 'Binary search trees',
-        daysAgo: 1,
-        hour: 16,
-        minutes: 12,
+        id: 'cyber-2',
+        subject: 'cyber',
+        weekday: DateTime.friday,
+        start: '08:30',
+        title: 'Lab: packet capture with Wireshark',
+        minutes: 171,
       ),
     ];
   }
@@ -268,9 +347,11 @@ Reviewed u-substitution for definite and indefinite integrals, including changin
 class _Lecture {
   final String id;
   final String subject;
+
+  /// The class it was recorded in, which sets its date.
+  final int weekday;
+  final String start;
   final String title;
-  final int daysAgo;
-  final int hour;
   final int minutes;
   final String? notes;
   final String? transcript;
@@ -278,9 +359,9 @@ class _Lecture {
   const _Lecture({
     required this.id,
     required this.subject,
+    required this.weekday,
+    required this.start,
     required this.title,
-    required this.daysAgo,
-    required this.hour,
     required this.minutes,
     this.notes,
     this.transcript,

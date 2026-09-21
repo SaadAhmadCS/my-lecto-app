@@ -10,11 +10,7 @@ class ServerException implements Exception {
   final int? statusCode;
   final String? code;
 
-  const ServerException({
-    required this.message,
-    this.statusCode,
-    this.code,
-  });
+  const ServerException({required this.message, this.statusCode, this.code});
 
   @override
   String toString() =>
@@ -37,7 +33,8 @@ class NetworkException implements Exception {
   final String message;
 
   const NetworkException({
-    this.message = 'No internet connection. '
+    this.message =
+        'No internet connection. '
         'Please check your network.',
   });
 
@@ -50,10 +47,7 @@ class RecordingException implements Exception {
   final String message;
   final String? details;
 
-  const RecordingException({
-    required this.message,
-    this.details,
-  });
+  const RecordingException({required this.message, this.details});
 
   @override
   String toString() =>
@@ -66,10 +60,7 @@ class StorageException implements Exception {
   final String message;
   final int? availableMB;
 
-  const StorageException({
-    required this.message,
-    this.availableMB,
-  });
+  const StorageException({required this.message, this.availableMB});
 
   @override
   String toString() =>
@@ -88,6 +79,5 @@ class PermissionDeniedException implements Exception {
   });
 
   @override
-  String toString() =>
-      'PermissionDeniedException(permission: $permission)';
+  String toString() => 'PermissionDeniedException(permission: $permission)';
 }

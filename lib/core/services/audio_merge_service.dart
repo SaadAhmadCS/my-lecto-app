@@ -136,8 +136,9 @@ class AudioMergeService {
     final dir = await _cacheDir();
     if (!await dir.exists()) await dir.create(recursive: true);
 
-    final signature =
-        Object.hashAll(chunkPaths).toUnsigned(32).toRadixString(16);
+    final signature = Object.hashAll(
+      chunkPaths,
+    ).toUnsigned(32).toRadixString(16);
 
     return File('${dir.path}/${recordingId}_$signature.m4a');
   }

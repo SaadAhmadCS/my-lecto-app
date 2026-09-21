@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="mugBody" x1="62" y1="84" x2="126" y2="148" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1FC188"/>
+      <stop offset="100%" stop-color="#0E7A55"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient mint glow -->
+  <ellipse cx="100" cy="116" rx="68" ry="46" fill="#128B62" fill-opacity="0.1"/>
+
+  <!-- Saucer -->
+  <ellipse cx="96" cy="150" rx="54" ry="10" fill="#E2D9CD"/>
+  <ellipse cx="96" cy="147" rx="40" ry="6" fill="#F4EEE6"/>
+
+  <!-- Handle -->
+  <path d="M124 100C146 100 146 132 124 132" stroke="#0E7A55" stroke-width="9" stroke-linecap="round"/>
+
+  <!-- Mug -->
+  <path d="M62 88H126V128C126 139.05 117.05 148 106 148H82C70.95 148 62 139.05 62 128V88Z" fill="url(#mugBody)"/>
+  <ellipse cx="94" cy="88" rx="32" ry="7" fill="#0E6245"/>
+  <ellipse cx="94" cy="89" rx="26" ry="4.5" fill="#7A4A2A"/>
+
+  <!-- A little heart on the mug -->
+  <path d="M94 124C94 124 83 117 83 110.5C83 107.2 85.6 105 88.4 105C90.6 105 92.6 106.4 94 108.3C95.4 106.4 97.4 105 99.6 105C102.4 105 105 107.2 105 110.5C105 117 94 124 94 124Z" fill="#FFFFFF" fill-opacity="0.9"/>
+
+  <!-- Steam -->
+  <path d="M82 72C77 65 87 60 82 52" stroke="#9FD9C0" stroke-width="5" stroke-linecap="round"/>
+  <path d="M96 70C91 62 101 57 96 48" stroke="#9FD9C0" stroke-width="5" stroke-linecap="round"/>
+  <path d="M110 72C105 65 115 60 110 52" stroke="#9FD9C0" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Sparkles -->
+  <path d="M152 50L154.5 56.5L161 59L154.5 61.5L152 68L149.5 61.5L143 59L149.5 56.5L152 50Z" fill="#1FC188"/>
+  <circle cx="44" cy="84" r="3" fill="#1FC188" fill-opacity="0.6"/>
+</svg>

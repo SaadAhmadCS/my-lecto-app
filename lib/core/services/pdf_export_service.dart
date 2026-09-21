@@ -164,14 +164,10 @@ class PdfExportService {
 
       // Check for table
       if (line.startsWith('|') && line.endsWith('|')) {
-        final cells = line
-            .split('|')
-            .skip(1)
-            .map((e) => e.trim())
-            .toList();
+        final cells = line.split('|').skip(1).map((e) => e.trim()).toList();
         if (cells.isNotEmpty) {
           cells.removeLast(); // skip last empty due to trailing |
-          
+
           // skip separator lines like |---|---|
           if (cells.every((cell) => cell.replaceAll('-', '').isEmpty)) {
             continue;

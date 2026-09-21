@@ -8,7 +8,8 @@ import 'package:sqflite/sqflite.dart';
 class RecordingDatabase {
   static Database? _database;
   static const String _dbName = 'lecto_recordings.db';
-  static const int _dbVersion = 1;
+  /// 2: added `timetable_slots` for class reminders.
+  static const int _dbVersion = 2;
 
   /// Subject used when a recording is started without picking one.
   static const String unsortedSubjectId = 'unsorted';
@@ -22,7 +23,39 @@ class RecordingDatabase {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, _dbName);
 
-    return openDatabase(path, version: _dbVersion, onCreate: _onCreate);
+    return openDatabase(
+      path,
+      version: _dbVersion,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
+  }
+
+  static Future<void> _onUpgrade(Database db, int from, int to) async {
+    if (from < 2) await _createTimetable(db);
+  }
+
+  /// One weekly class: a subject on a weekday between two times.
+  ///
+  /// Times are minutes after midnight, local time. `weekday` follows
+  /// [DateTime.weekday] (1 = Monday).
+  static Future<void> _createTimetable(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE timetable_slots (
+        id TEXT PRIMARY KEY,
+        subject_id TEXT NOT NULL,
+        weekday INTEGER NOT NULL,
+        start_minute INTEGER NOT NULL,
+        end_minute INTEGER NOT NULL,
+        room TEXT,
+        is_lab INTEGER NOT NULL DEFAULT 0,
+        remind INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_timetable_day ON timetable_slots(weekday, start_minute)',
+    );
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -95,6 +128,7 @@ class RecordingDatabase {
       'ON audio_chunks(recording_id, sequence_number)',
     );
 
+    await _createTimetable(db);
     await _seedUnsorted(db);
   }
 
@@ -118,6 +152,7 @@ class RecordingDatabase {
         'photos',
         'audio_chunks',
         'recordings',
+        'timetable_slots',
         'subjects',
       ]) {
         await txn.delete(table);

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/errors/error_messages.dart';
 import '../../data/subject_dao.dart';
+import '../../../timetable/services/class_reminder_service.dart';
 import '../widgets/create_subject_sheet.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -444,7 +445,11 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
 
     if (confirmed == true) {
       try {
+        if (!mounted) return;
+        final reminders = context.read<ClassReminderService>();
         await _subjectDao.deleteSubject(id);
+        // Its classes went with it, so their reminders must too.
+        await reminders.reschedule();
         _loadSubjects();
       } catch (e) {
         if (mounted) {

@@ -21,6 +21,8 @@ import 'features/recording/data/services/storage_monitor_service.dart';
 import 'features/recording/presentation/bloc/recording_bloc.dart';
 import 'features/recording/presentation/widgets/recording_mini_bar.dart';
 import 'features/subjects/data/subject_dao.dart';
+import 'features/timetable/data/timetable_dao.dart';
+import 'features/timetable/services/class_reminder_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,20 +41,59 @@ void main() async {
   // opens on Home.
   final router = AppRouter.router();
 
-  // Tapping a "recording saved" notification opens that recording.
+  // Notification taps: a recording ID opens that recording; a class
+  // reminder starts recording in that class; the end nudge opens the
+  // recorder.
   final notifications = sl<NotificationService>();
-  void openRecording(String id) => router.push('/recording/$id');
-  notifications.onRecordingTapped = openRecording;
+  void handleTap(String payload) => _handleNotificationTap(router, payload);
+  notifications.onTapped = handleTap;
 
   runApp(MyLectoApp(router: router));
 
   unawaited(_recoverInterruptedRecordings());
+  // Reminders are rebuilt at every launch, so they track the timetable
+  // and the time zone even if something cleared them.
+  unawaited(sl<ClassReminderService>().reschedule());
 
-  final launchRecordingId = await notifications.launchRecordingId();
-  if (launchRecordingId != null) {
+  final launchPayload = await notifications.launchPayload();
+  if (launchPayload != null) {
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => openRecording(launchRecordingId),
+      (_) => handleTap(launchPayload),
     );
+  }
+}
+
+void _handleNotificationTap(GoRouter router, String payload) {
+  if (payload == ClassReminderService.recorderPayload) {
+    router.push(AppRoutes.record);
+  } else if (payload.startsWith(ClassReminderService.classPayloadPrefix)) {
+    unawaited(
+      _startClass(
+        router,
+        payload.substring(ClassReminderService.classPayloadPrefix.length),
+      ),
+    );
+  } else {
+    router.push('/recording/$payload');
+  }
+}
+
+/// Tapping a class reminder means "I am in class": record it, in its subject.
+///
+/// Already recording, or the class has since been deleted, and it just
+/// opens the recorder.
+Future<void> _startClass(GoRouter router, String slotId) async {
+  final slot = await sl<TimetableDao>().get(slotId);
+  final context = AppRouter.navigatorKey.currentContext;
+  final busy =
+      context != null &&
+      context.mounted &&
+      context.read<RecordingBloc>().isActive;
+
+  if (slot == null || busy) {
+    router.push(AppRoutes.record);
+  } else {
+    router.push('${AppRoutes.record}?subjectId=${slot.subjectId}&start=1');
   }
 }
 
@@ -69,7 +110,8 @@ Future<void> _recoverInterruptedRecordings() async {
       await notifications.showRecordingUpdate(
         recordingId: recording.recordingId,
         title: 'Recording saved: ${recording.title}',
-        body: 'The app closed while recording. '
+        body:
+            'The app closed while recording. '
             '${minutes < 1 ? 'Less than a minute' : '$minutes min'} of audio '
             'was saved'
             '${recording.lostEnd ? '; the last part before it closed could not be saved.' : '.'}',
@@ -102,14 +144,12 @@ class MyLectoApp extends StatelessWidget {
         RepositoryProvider<PhotoCaptureService>.value(
           value: sl<PhotoCaptureService>(),
         ),
-        RepositoryProvider<RecordingDao>.value(
-          value: sl<RecordingDao>(),
-        ),
-        RepositoryProvider<SubjectDao>.value(
-          value: sl<SubjectDao>(),
-        ),
-        RepositoryProvider<RecordingFeed>.value(
-          value: sl<RecordingFeed>(),
+        RepositoryProvider<RecordingDao>.value(value: sl<RecordingDao>()),
+        RepositoryProvider<SubjectDao>.value(value: sl<SubjectDao>()),
+        RepositoryProvider<RecordingFeed>.value(value: sl<RecordingFeed>()),
+        RepositoryProvider<TimetableDao>.value(value: sl<TimetableDao>()),
+        RepositoryProvider<ClassReminderService>.value(
+          value: sl<ClassReminderService>(),
         ),
       ],
       // One recorder for the whole app, so a recording keeps going while you

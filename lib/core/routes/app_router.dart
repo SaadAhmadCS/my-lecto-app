@@ -10,6 +10,7 @@ import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/home/presentation/screens/quizzes_screen.dart';
 import '../../features/subjects/presentation/screens/subject_detail_screen.dart';
 import '../../features/subjects/presentation/screens/subjects_screen.dart';
+import '../../features/timetable/presentation/screens/timetable_screen.dart';
 import '../../features/transcript/presentation/screens/transcripts_screen.dart';
 import '../../shared/widgets/app_scaffold.dart';
 
@@ -27,6 +28,7 @@ class AppRoutes {
   static const String quizzes = '/quizzes';
   static const String tasks = '/tasks';
   static const String calendar = '/calendar';
+  static const String timetable = '/timetable';
 }
 
 /// GoRouter configuration.
@@ -37,74 +39,81 @@ class AppRouter {
   AppRouter._();
 
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
+
+  /// The root navigator, for code outside the widget tree that needs a
+  /// context — notification taps, say.
+  static GlobalKey<NavigatorState> get navigatorKey => _rootNavigatorKey;
   static final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
   static GoRouter router() => GoRouter(
-        navigatorKey: _rootNavigatorKey,
-        initialLocation: AppRoutes.home,
+    navigatorKey: _rootNavigatorKey,
+    initialLocation: AppRoutes.home,
+    routes: [
+      ShellRoute(
+        navigatorKey: _shellNavigatorKey,
+        builder: (context, state, child) => AppScaffold(child: child),
         routes: [
-          ShellRoute(
-            navigatorKey: _shellNavigatorKey,
-            builder: (context, state, child) => AppScaffold(child: child),
-            routes: [
-              GoRoute(
-                path: AppRoutes.home,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: HomeScreen()),
-              ),
-              GoRoute(
-                path: AppRoutes.tasks,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: TasksScreen()),
-              ),
-              GoRoute(
-                path: AppRoutes.calendar,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: CalendarScreen()),
-              ),
-              GoRoute(
-                path: AppRoutes.subjects,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: SubjectsScreen()),
-              ),
-              GoRoute(
-                path: AppRoutes.transcripts,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: TranscriptsScreen()),
-              ),
-              GoRoute(
-                path: AppRoutes.settings,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: SettingsScreen()),
-              ),
-            ],
-          ),
-          // Full-screen routes (outside the shell)
           GoRoute(
-            path: AppRoutes.subjectDetail,
-            builder: (context, state) => SubjectDetailScreen(
-              subjectId: state.pathParameters['id']!,
-            ),
+            path: AppRoutes.home,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: HomeScreen()),
           ),
           GoRoute(
-            path: AppRoutes.record,
-            builder: (context, state) => RecordingScreen(
-              initialSubjectId: state.uri.queryParameters['subjectId'],
-              // Arriving with a subject already chosen starts straight away.
-              autoStart: state.uri.queryParameters['start'] == '1',
-            ),
+            path: AppRoutes.tasks,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: TasksScreen()),
           ),
           GoRoute(
-            path: AppRoutes.quizzes,
-            builder: (context, state) => const QuizzesScreen(),
+            path: AppRoutes.calendar,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: CalendarScreen()),
           ),
           GoRoute(
-            path: AppRoutes.recordingDetail,
-            builder: (context, state) => RecordingDetailScreen(
-              recordingId: state.pathParameters['id']!,
-              title: state.uri.queryParameters['title'] ?? 'Recording',
-            ),
+            path: AppRoutes.subjects,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SubjectsScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.transcripts,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: TranscriptsScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.settings,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SettingsScreen()),
           ),
         ],
-      );
+      ),
+      // Full-screen routes (outside the shell)
+      GoRoute(
+        path: AppRoutes.subjectDetail,
+        builder: (context, state) =>
+            SubjectDetailScreen(subjectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.record,
+        builder: (context, state) => RecordingScreen(
+          initialSubjectId: state.uri.queryParameters['subjectId'],
+          // Arriving with a subject already chosen starts straight away.
+          autoStart: state.uri.queryParameters['start'] == '1',
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.timetable,
+        builder: (context, state) => const TimetableScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.quizzes,
+        builder: (context, state) => const QuizzesScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.recordingDetail,
+        builder: (context, state) => RecordingDetailScreen(
+          recordingId: state.pathParameters['id']!,
+          title: state.uri.queryParameters['title'] ?? 'Recording',
+        ),
+      ),
+    ],
+  );
 }

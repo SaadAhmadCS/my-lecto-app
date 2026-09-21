@@ -7,6 +7,8 @@ import '../../features/recording/data/services/photo_capture_service.dart';
 import '../../features/recording/data/services/recording_recovery_service.dart';
 import '../../features/recording/data/services/storage_monitor_service.dart';
 import '../../features/subjects/data/subject_dao.dart';
+import '../../features/timetable/data/timetable_dao.dart';
+import '../../features/timetable/services/class_reminder_service.dart';
 import '../permissions/permission_service.dart';
 import '../services/notification_service.dart';
 
@@ -41,5 +43,14 @@ Future<void> initServiceLocator() async {
 
   sl.registerLazySingleton<RecordingRecoveryService>(
     () => RecordingRecoveryService(dao: sl<RecordingDao>()),
+  );
+
+  // === Timetable ===
+  sl.registerLazySingleton<TimetableDao>(() => TimetableDao());
+  sl.registerLazySingleton<ClassReminderService>(
+    () => ClassReminderService(
+      notifications: sl<NotificationService>(),
+      timetable: sl<TimetableDao>(),
+    ),
   );
 }

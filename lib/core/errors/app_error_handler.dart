@@ -17,7 +17,11 @@ class AppErrorHandler {
       if (kDebugMode) {
         FlutterError.presentError(details);
       }
-      report(details.exception, details.stack, context: details.context?.toString());
+      report(
+        details.exception,
+        details.stack,
+        context: details.context?.toString(),
+      );
     };
 
     // Uncaught async errors (futures without a catch, timers, streams)
@@ -34,7 +38,9 @@ class AppErrorHandler {
   }
 
   static void report(Object error, StackTrace? stack, {String? context}) {
-    debugPrint('AppErrorHandler${context == null ? '' : ' ($context)'}: $error');
+    debugPrint(
+      'AppErrorHandler${context == null ? '' : ' ($context)'}: $error',
+    );
     if (stack != null) debugPrint(stack.toString());
   }
 }
