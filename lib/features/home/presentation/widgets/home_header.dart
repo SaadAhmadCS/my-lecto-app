@@ -138,9 +138,7 @@ class _BellButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: count == 0
-          ? 'Nothing needs attention'
-          : '$count recordings need your AI',
+      label: count == 0 ? 'Nothing needs attention' : '$count things need you',
       button: true,
       child: GestureDetector(
         onTap: onTap,

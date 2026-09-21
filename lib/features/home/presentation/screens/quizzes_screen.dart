@@ -36,18 +36,22 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
   @override
   void initState() {
     super.initState();
+    final cached = HomeDigestBuilder.last;
+    if (cached != null) _apply(cached);
     _load();
   }
 
   Future<void> _load() async {
     final digest = await _builder.build();
     if (!mounted) return;
-    setState(() {
-      _items = digest.futureItems
-          .where((item) => item.kind == UpcomingKind.quiz)
-          .toList();
-      _isLoading = false;
-    });
+    setState(() => _apply(digest));
+  }
+
+  void _apply(HomeDigest digest) {
+    _items = digest.futureItems
+        .where((item) => item.kind == UpcomingKind.quiz)
+        .toList();
+    _isLoading = false;
   }
 
   void _open(UpcomingItem item) {

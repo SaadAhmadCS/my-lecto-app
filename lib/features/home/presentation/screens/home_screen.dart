@@ -15,6 +15,7 @@ import '../../data/home_digest.dart';
 import '../widgets/home_action_card.dart';
 import '../widgets/home_header.dart';
 import '../widgets/home_task_row.dart';
+import '../widgets/inbox_sheet.dart';
 import '../widgets/upcoming_card.dart';
 
 /// The dashboard: what is due, and the four ways in.
@@ -32,9 +33,11 @@ class _HomeScreenState extends State<HomeScreen> {
     subjects: context.read<SubjectDao>(),
   );
 
-  HomeDigest _digest = const HomeDigest();
-  String _name = '';
-  bool _isLoading = true;
+  // The last digest and name, shown at once when Home comes back into view;
+  // _load refreshes them without a loading flash.
+  HomeDigest _digest = HomeDigestBuilder.last ?? const HomeDigest();
+  String _name = UserProfile.cachedName ?? '';
+  bool _isLoading = HomeDigestBuilder.last == null;
 
   @override
   void initState() {
@@ -74,9 +77,10 @@ class _HomeScreenState extends State<HomeScreen> {
               HomeHeader(
                 name: _name,
                 streakDays: _digest.streakDays,
-                needsAttention: _digest.awaitingCount,
+                needsAttention: InboxSheet.attentionCount(_digest),
                 onAvatarTap: _editName,
-                onBellTap: () => context.go('/transcripts'),
+                onBellTap: () =>
+                    InboxSheet.show(context, _digest).then((_) => _load()),
               ),
               const SizedBox(height: AppSpacing.lg),
               _buildGreeting(context),
@@ -113,26 +117,33 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 2),
-        RichText(
-          text: TextSpan(
-            style: theme.textTheme.displayMedium?.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              height: 1.15,
+        // Fades in once the numbers are known (only ever on a first launch;
+        // after that the last digest is shown at once).
+        AnimatedOpacity(
+          opacity: _isLoading ? 0 : 1,
+          duration: const Duration(milliseconds: 250),
+          child: RichText(
+            text: TextSpan(
+              style: theme.textTheme.displayMedium?.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+                height: 1.15,
+              ),
+              // A same-height placeholder, so nothing below jumps when it lands.
+              children: _isLoading
+                  ? const [TextSpan(text: ' ')]
+                  : due > 0
+                  ? [
+                      TextSpan(
+                        text: '$due thing${due == 1 ? '' : 's'} ',
+                        style: const TextStyle(color: AppColors.primary),
+                      ),
+                      const TextSpan(text: 'to do.'),
+                    ]
+                  : _digest.recordingCount == 0
+                  ? [const TextSpan(text: 'record your first lecture.')]
+                  : [const TextSpan(text: 'nothing due. Nice.')],
             ),
-            children: _isLoading
-                ? const [TextSpan(text: 'one moment…')]
-                : due > 0
-                ? [
-                    TextSpan(
-                      text: '$due thing${due == 1 ? '' : 's'} ',
-                      style: const TextStyle(color: AppColors.primary),
-                    ),
-                    const TextSpan(text: 'to do.'),
-                  ]
-                : _digest.recordingCount == 0
-                ? [const TextSpan(text: 'record your first lecture.')]
-                : [const TextSpan(text: 'nothing due. Nice.')],
           ),
         ),
       ],

@@ -195,6 +195,10 @@ class HomeDigestBuilder {
        _feed = feed,
        _subjects = subjects;
 
+  /// The most recent digest, so a screen coming back into view can show it
+  /// at once and refresh quietly rather than flash a loading state.
+  static HomeDigest? last;
+
   Future<HomeDigest> build() async {
     try {
       final subjects = await _subjects.listSubjects();
@@ -206,10 +210,11 @@ class HomeDigestBuilder {
 
       for (final recording in recordings) {
         final id = recording['id'] as String;
-        final notes = await _dao.getNotes(id);
-        if (notes == null) continue;
+        // The feed already read the notes; no second query per lecture.
+        final markdown = recording['notesMarkdown'] as String?;
+        if (markdown == null || markdown.isEmpty) continue;
 
-        final parsed = NotesParser.parse(notes.notesMarkdown);
+        final parsed = NotesParser.parse(markdown);
         final title = recording['title'] as String? ?? 'Recording';
         final subjectMap = recording['subject'] as Map<String, dynamic>?;
         final subject = subjectMap?['name'] as String?;
@@ -249,7 +254,7 @@ class HomeDigestBuilder {
         }
       }
 
-      return HomeDigest(
+      return last = HomeDigest(
         tasks: tasks,
         upcoming: upcoming,
         // Unsorted is a holding folder, not a course.

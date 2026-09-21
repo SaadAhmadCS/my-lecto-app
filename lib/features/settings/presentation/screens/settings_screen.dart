@@ -19,7 +19,6 @@ import '../../../../core/services/feedback_service.dart';
 import '../../../recording/data/local/recording_feed.dart';
 import '../../../../core/constants/transcription_language.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
 
 /// The app's version, shown in Settings and attached to feedback.
 const String appVersion = '1.0.0';

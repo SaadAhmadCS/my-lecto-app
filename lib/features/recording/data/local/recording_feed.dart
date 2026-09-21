@@ -90,6 +90,7 @@ class RecordingFeed {
           : awaitingNotes,
       'createdAt': row['created_at'],
       'totalDurationMs': (row['total_duration_ms'] as int?) ?? 0,
+      'notesMarkdown': notes,
       '_count': {'chunks': (row['chunk_count'] as int?) ?? 0},
       'subject': subjectId == null
           ? null

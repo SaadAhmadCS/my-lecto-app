@@ -9,13 +9,17 @@ class UserProfile {
 
   static const _nameKey = 'displayName';
 
+  /// The name as last read or set, for showing without waiting on storage.
+  static String? cachedName;
+
   static Future<String> name() async {
     final prefs = await SharedPreferences.getInstance();
-    return (prefs.getString(_nameKey) ?? '').trim();
+    return cachedName = (prefs.getString(_nameKey) ?? '').trim();
   }
 
   static Future<void> setName(String name) async {
     final prefs = await SharedPreferences.getInstance();
+    cachedName = name.trim();
     await prefs.setString(_nameKey, name.trim());
   }
 

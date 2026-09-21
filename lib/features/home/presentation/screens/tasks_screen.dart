@@ -41,17 +41,22 @@ class _TasksScreenState extends State<TasksScreen> {
   @override
   void initState() {
     super.initState();
+    // Show the last digest straight away; the load below refreshes it.
+    final cached = HomeDigestBuilder.last;
+    if (cached != null) _apply(cached);
     _load();
   }
 
   Future<void> _load() async {
     final digest = await _builder.build();
     if (!mounted) return;
-    setState(() {
-      _open = digest.todayTasks.where((task) => !task.done).toList();
-      _done = digest.tasks.where((task) => task.done).toList();
-      _isLoading = false;
-    });
+    setState(() => _apply(digest));
+  }
+
+  void _apply(HomeDigest digest) {
+    _open = digest.todayTasks.where((task) => !task.done).toList();
+    _done = digest.tasks.where((task) => task.done).toList();
+    _isLoading = false;
   }
 
   Future<void> _toggle(HomeTask task) async {

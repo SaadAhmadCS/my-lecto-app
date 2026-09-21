@@ -57,33 +57,27 @@ class AppRouter {
         routes: [
           GoRoute(
             path: AppRoutes.home,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: HomeScreen()),
+            pageBuilder: (context, state) => _tab(const HomeScreen()),
           ),
           GoRoute(
             path: AppRoutes.tasks,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: TasksScreen()),
+            pageBuilder: (context, state) => _tab(const TasksScreen()),
           ),
           GoRoute(
             path: AppRoutes.calendar,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CalendarScreen()),
+            pageBuilder: (context, state) => _tab(const CalendarScreen()),
           ),
           GoRoute(
             path: AppRoutes.subjects,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SubjectsScreen()),
+            pageBuilder: (context, state) => _tab(const SubjectsScreen()),
           ),
           GoRoute(
             path: AppRoutes.transcripts,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: TranscriptsScreen()),
+            pageBuilder: (context, state) => _tab(const TranscriptsScreen()),
           ),
           GoRoute(
             path: AppRoutes.settings,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SettingsScreen()),
+            pageBuilder: (context, state) => _tab(const SettingsScreen()),
           ),
         ],
       ),
@@ -123,3 +117,16 @@ class AppRouter {
     ],
   );
 }
+
+/// Tabs cross-fade quickly rather than snapping, so switching between them
+/// feels like one app rather than separate screens.
+CustomTransitionPage<void> _tab(Widget child) => CustomTransitionPage<void>(
+  child: child,
+  transitionDuration: const Duration(milliseconds: 200),
+  reverseTransitionDuration: const Duration(milliseconds: 200),
+  transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+      FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        child: child,
+      ),
+);

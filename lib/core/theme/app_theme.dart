@@ -118,6 +118,16 @@ class AppTheme {
   static ThemeData get lightTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
+    // Screens pushed on top (a lecture, a subject, the recorder) slide in
+    // from the right while fading — Android's newer, calmer transition —
+    // instead of the default zoom.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(
+          backgroundColor: AppColors.background,
+        ),
+      },
+    ),
     colorScheme: const ColorScheme.light(
       primary: AppColors.primary,
       onPrimary: Colors.white,
