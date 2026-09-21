@@ -39,7 +39,10 @@ The **second law** says entropy never decreases.
     // Offsets point at the text actually displayed
     for (final m in matches) {
       final text = index.paragraphs[m.paragraph];
-      expect(text.substring(m.start, m.start + m.length).toLowerCase(), 'entropy');
+      expect(
+        text.substring(m.start, m.start + m.length).toLowerCase(),
+        'entropy',
+      );
     }
   });
 

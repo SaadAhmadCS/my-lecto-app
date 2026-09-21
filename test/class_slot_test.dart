@@ -37,10 +37,7 @@ void main() {
     });
 
     test('the early window can be switched off', () {
-      expect(
-        _monday830.isOnAt(_mon(8, 20), earlyBy: Duration.zero),
-        isFalse,
-      );
+      expect(_monday830.isOnAt(_mon(8, 20), earlyBy: Duration.zero), isFalse);
     });
   });
 

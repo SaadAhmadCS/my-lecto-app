@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 import '../../recording/data/local/recording_database.dart';
+import '../services/timetable_import.dart';
 import 'class_slot.dart';
 
 /// The weekly timetable, stored on the device.
@@ -106,6 +107,82 @@ class TimetableDao {
   Future<void> delete(String id) async {
     final db = await RecordingDatabase.database;
     await db.delete('timetable_slots', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Save a whole imported timetable at once.
+  ///
+  /// Each class goes into the subject it names — matched the way people
+  /// abbreviate (see [TimetableImport.sameCourse]), so "Intro to Computer
+  /// Arch" finds "Introduction to Computer Architecture" — and missing
+  /// subjects are created, coloured from [palette] with colours already in
+  /// use skipped first. With [replace], the current timetable is cleared
+  /// first. All or nothing.
+  ///
+  /// Returns how many subjects were created.
+  Future<int> importClasses(
+    List<ImportedClass> classes, {
+    required bool replace,
+    required List<String> palette,
+  }) async {
+    final db = await RecordingDatabase.database;
+    final now = DateTime.now().toIso8601String();
+
+    return db.transaction((txn) async {
+      final subjects = await txn.query(
+        'subjects',
+        columns: ['id', 'name', 'color'],
+      );
+      // (name, id) of every subject, growing as new ones are created.
+      final known = [
+        for (final s in subjects) (s['name'] as String, s['id'] as String),
+      ];
+      final used = subjects
+          .map((s) => (s['color'] as String).toLowerCase())
+          .toSet();
+      final colors = [
+        ...palette.where((c) => !used.contains(c.toLowerCase())),
+        ...palette,
+      ];
+
+      if (replace) await txn.delete('timetable_slots');
+
+      var created = 0;
+      for (final c in classes) {
+        var subjectId = _match(known, c.subject);
+        if (subjectId == null) {
+          subjectId = _uuid.v4();
+          await txn.insert('subjects', {
+            'id': subjectId,
+            'name': c.subject,
+            'color': colors[created % colors.length],
+            'created_at': now,
+            'updated_at': now,
+          });
+          known.add((c.subject, subjectId));
+          created++;
+        }
+
+        await txn.insert('timetable_slots', {
+          'id': _uuid.v4(),
+          'subject_id': subjectId,
+          'weekday': c.weekday,
+          'start_minute': c.startMinute,
+          'end_minute': c.endMinute,
+          'room': _clean(c.room),
+          'is_lab': c.isLab ? 1 : 0,
+          'remind': 1,
+          'created_at': now,
+        });
+      }
+      return created;
+    });
+  }
+
+  static String? _match(List<(String, String)> known, String name) {
+    for (final (existing, id) in known) {
+      if (TimetableImport.sameCourse(existing, name)) return id;
+    }
+    return null;
   }
 
   static String? _clean(String? room) {

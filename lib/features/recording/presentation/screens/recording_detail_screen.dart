@@ -15,6 +15,8 @@ import '../../../../core/services/notes_parser.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/export_options_sheet.dart';
+import '../../../../shared/widgets/primary_pill_button.dart';
+import '../../../../shared/widgets/recording_card.dart';
 import '../../../subjects/data/subject_dao.dart';
 import '../../data/local/recording_dao.dart';
 import '../../data/local/recording_feed.dart';
@@ -56,7 +58,10 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   String _processingStatus = 'pending';
   String? _transcriptContent;
   String? _summaryContent;
-  final int _wordCount = 0;
+
+  /// Words in the transcript, shown above it.
+  int get _wordCount =>
+      RegExp(r'\S+').allMatches(_transcriptContent ?? '').length;
   bool _isLoading = true;
   String? _error;
   late String _title = widget.title;
@@ -537,7 +542,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBg,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         // Always offer a way out. Arriving from a notification tap on a cold
         // start leaves nothing to pop, which previously stranded the user here.
@@ -554,18 +559,10 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                   }
                 },
               ),
-        title: _isSearching
-            ? _buildSearchField()
-            : GestureDetector(
-                onTap: _renameRecording,
-                child: Text(
-                  _title,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
+        backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
+        // The title lives in the header below, big; the bar stays for actions.
+        title: _isSearching ? _buildSearchField() : null,
         actions: _isSearching
             ? _buildSearchActions()
             : [
@@ -654,21 +651,6 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                   ],
                 ),
               ],
-        bottom: _processingStatus == RecordingFeed.ready
-            ? TabBar(
-                controller: _tabController,
-                indicatorColor: AppColors.primary,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.textSecondaryDark,
-                tabs: const [
-                  Tab(icon: Icon(Icons.notes_rounded), text: 'Notes'),
-                  Tab(
-                    icon: Icon(Icons.description_outlined),
-                    text: 'Transcript',
-                  ),
-                ],
-              )
-            : null,
       ),
       body: _buildBody(),
       // Plays the audio kept on this device, on every tab and state
@@ -690,108 +672,309 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
     }
 
     if (_processingStatus == RecordingFeed.ready) {
-      return TabBarView(
-        controller: _tabController,
-        children: [_buildSummaryView(), _buildTranscriptView()],
+      return Column(
+        children: [
+          // Searching needs the room; the header comes back after.
+          if (!_isSearching) _buildHeader(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+            child: _buildTabs(),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [_buildSummaryView(), _buildTranscriptView()],
+            ),
+          ),
+        ],
       );
     }
 
     return _buildAwaitingPasteView();
   }
 
+  /// Subject, title and when, in the subject's colour. Tap the title to
+  /// rename it.
+  Widget _buildHeader() {
+    final color = AppColors.fromHex(_subject?['color'] as String?);
+    final ink = Color.lerp(color, Colors.black, 0.35)!;
+    final recordedAt = _recordedAt;
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final duration = _duration;
+
+    Widget chip(IconData icon, String label) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: ink),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: ink,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_subject != null)
+            Row(
+              children: [
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    (_subject!['name'] as String? ?? '').toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.9,
+                      color: ink,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: _renameRecording,
+            child: Text(
+              _title,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 23,
+                height: 1.2,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (recordedAt != null)
+                chip(
+                  Icons.event_rounded,
+                  '${days[recordedAt.weekday - 1]} ${recordedAt.day} '
+                  '${months[recordedAt.month - 1]}',
+                ),
+              if (duration != null)
+                chip(Icons.timer_outlined, formatRecordingDuration(duration)),
+              if (_localNotes?.tasks.isNotEmpty ?? false)
+                chip(
+                  Icons.checklist_rounded,
+                  '${_localNotes!.tasks.where((t) => t.done).length}'
+                  '/${_localNotes!.tasks.length} tasks',
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Notes | Transcript, as the same dark pill switch the Tasks tab uses.
+  Widget _buildTabs() {
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          color: AppColors.navBar,
+          borderRadius: BorderRadius.circular(100),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        labelColor: AppColors.textOnPrimary,
+        unselectedLabelColor: AppColors.textSecondary,
+        labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+        splashBorderRadius: BorderRadius.circular(100),
+        tabs: const [
+          Tab(text: 'Notes'),
+          Tab(text: 'Transcript'),
+        ],
+      ),
+    );
+  }
+
   /// Shown for a recording with no notes yet. Walks through the round trip in
   /// the order you actually do it.
   Widget _buildAwaitingPasteView() {
+    final long = _duration != null && _duration! > _freeTierAudioLimit;
+
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
-        const SizedBox(height: AppSpacing.xxl),
-        Icon(
-          Icons.auto_awesome_rounded,
-          size: 56,
-          color: AppColors.primary.withValues(alpha: 0.8),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Text(
-          'Make notes with your AI',
-          textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          'This recording stayed on your device. Send it to your own AI app, '
-          'then bring the reply back here.',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppColors.textTertiaryDark,
-            height: 1.5,
+        _buildHeader(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+            decoration: BoxDecoration(
+              color: AppColors.tintCoral,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: AppColors.textOnPrimary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Make notes with your AI',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.inkCoral,
+                            ),
+                          ),
+                          Text(
+                            'Stays on your phone until you share it',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: AppColors.inkCoral,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                const _StepRow(
+                  number: '1',
+                  text: 'Share the audio — the instructions go with it.',
+                ),
+                _StepRow(
+                  number: '2',
+                  text:
+                      'Pick ${AiShareService.audioCapableApps.join(', ')}, '
+                      'wait for the upload, then send.',
+                ),
+                const _StepRow(
+                  number: '3',
+                  text: 'Copy the whole reply and tap Paste notes.',
+                ),
+                const SizedBox(height: 8),
+                PrimaryPillButton(
+                  label: _isSharing
+                      ? 'Preparing audio…'
+                      : 'Share audio to your AI',
+                  icon: Icons.ios_share_rounded,
+                  onPressed: _isSharing ? null : _shareToAiApp,
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: _pasteNotesFromClipboard,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      backgroundColor: AppColors.surface,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: const StadiumBorder(),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    icon: const Icon(Icons.content_paste_rounded),
+                    label: const Text('Paste notes'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: AppSpacing.xl),
-        const _StepRow(
-          number: '1',
-          text: 'Share the audio — the prompt goes with it as a file.',
-        ),
-        _StepRow(
-          number: '2',
-          text:
-              'Pick ${AiShareService.audioCapableApps.join(', ')}, wait for '
-              'the upload, then send.',
-        ),
-        const _StepRow(
-          number: '3',
-          text: 'Copy the whole reply and tap Paste notes below.',
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        FilledButton.icon(
-          onPressed: _isSharing ? null : _shareToAiApp,
-          icon: _isSharing
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.ios_share_rounded),
-          label: const Text('Share audio to your AI'),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        OutlinedButton.icon(
-          onPressed: _pasteNotesFromClipboard,
-          icon: const Icon(Icons.content_paste_rounded),
-          label: const Text('Paste notes'),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Text(
-          'ChatGPT can\'t receive audio, so it won\'t appear in the share sheet '
-          'for this.',
-          textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: AppColors.textTertiaryDark),
-        ),
-        // A free Gemini account caps audio at 10 minutes. Without this the
-        // rejection looks like a bug in this app rather than a plan limit.
-        if (_duration != null && _duration! > _freeTierAudioLimit) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'This one is ${_duration!.inMinutes} minutes. Gemini only accepts '
-            '${_freeTierAudioLimit.inMinutes} minutes of audio on a free '
-            'account — a paid plan raises that to 3 hours.',
+        Padding(
+          padding: const EdgeInsets.fromLTRB(28, 14, 28, 0),
+          child: Text(
+            long
+                // A free Gemini account caps audio at 10 minutes. Without
+                // this the rejection looks like a bug in this app.
+                ? 'This one is ${_duration!.inMinutes} minutes. Gemini takes '
+                      '${_freeTierAudioLimit.inMinutes} minutes of audio on a '
+                      'free account — 3 hours on a paid plan. ChatGPT can\'t '
+                      'take audio at all.'
+                : 'ChatGPT can\'t take audio, so it won\'t appear in the '
+                      'share sheet.',
             textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AppColors.warning),
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.45,
+              color: long ? AppColors.warning : AppColors.textMuted,
+            ),
           ),
-        ],
+        ),
       ],
     );
   }
@@ -866,24 +1049,23 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
     return Column(
       children: [
         // Stats bar
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.base,
-            vertical: AppSpacing.sm,
-          ),
-          color: AppColors.darkSurface,
+        // Word count and reading time, as a quiet line above the text.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
           child: Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.text_snippet_outlined,
-                size: 16,
-                color: AppColors.textTertiaryDark,
+                size: 15,
+                color: AppColors.textMuted,
               ),
-              const SizedBox(width: AppSpacing.xs),
+              const SizedBox(width: 6),
               Text(
-                '$_wordCount words',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textTertiaryDark,
+                '$_wordCount words · ${(_wordCount / 200).ceil()} min read',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
                 ),
               ),
             ],
@@ -1067,8 +1249,8 @@ class _StepRow extends StatelessWidget {
             width: 24,
             height: 24,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.15),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -1083,9 +1265,11 @@ class _StepRow extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(height: 1.45),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkCoral,
+              ),
             ),
           ),
         ],

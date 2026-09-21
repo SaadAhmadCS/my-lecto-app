@@ -8,6 +8,7 @@ import 'package:sqflite/sqflite.dart';
 class RecordingDatabase {
   static Database? _database;
   static const String _dbName = 'lecto_recordings.db';
+
   /// 2: added `timetable_slots` for class reminders.
   static const int _dbVersion = 2;
 

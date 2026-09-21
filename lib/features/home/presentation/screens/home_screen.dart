@@ -123,16 +123,16 @@ class _HomeScreenState extends State<HomeScreen> {
             children: _isLoading
                 ? const [TextSpan(text: 'one moment…')]
                 : due > 0
-                    ? [
-                        TextSpan(
-                          text: '$due thing${due == 1 ? '' : 's'} ',
-                          style: const TextStyle(color: AppColors.primary),
-                        ),
-                        const TextSpan(text: 'to do.'),
-                      ]
-                    : _digest.recordingCount == 0
-                        ? [const TextSpan(text: 'record your first lecture.')]
-                        : [const TextSpan(text: 'nothing due. Nice.')],
+                ? [
+                    TextSpan(
+                      text: '$due thing${due == 1 ? '' : 's'} ',
+                      style: const TextStyle(color: AppColors.primary),
+                    ),
+                    const TextSpan(text: 'to do.'),
+                  ]
+                : _digest.recordingCount == 0
+                ? [const TextSpan(text: 'record your first lecture.')]
+                : [const TextSpan(text: 'nothing due. Nice.')],
           ),
         ),
       ],
@@ -184,9 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: HomeActionCard(
                 title: 'Tasks',
-                subtitle: tasksDue == 0
-                    ? 'All clear'
-                    : '$tasksDue to do',
+                subtitle: tasksDue == 0 ? 'All clear' : '$tasksDue to do',
                 illustration: 'assets/images/home_tasks.svg',
                 background: AppColors.tintMint,
                 foreground: AppColors.inkMint,
@@ -203,7 +201,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 illustration: 'assets/images/home_quizzes.svg',
                 background: AppColors.tintSky,
                 foreground: AppColors.inkSky,
-                onTap: () => context.push(AppRoutes.quizzes).then((_) => _load()),
+                onTap: () =>
+                    context.push(AppRoutes.quizzes).then((_) => _load()),
               ),
             ),
           ],
@@ -237,13 +236,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? '1 recording needs your AI'
                     : '$count recordings need your AI',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.inkCoral,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: AppColors.inkCoral,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                size: 20, color: AppColors.primary),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: AppColors.primary,
+            ),
           ],
         ),
       ),
@@ -279,11 +281,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 : 'Nothing to do',
             body: _digest.recordingCount == 0
                 ? 'Record a lecture, share it to your AI app, then paste the '
-                    'reply back.'
+                      'reply back.'
                 : 'Tasks appear here once your AI finds them in a lecture.',
           )
         else
-          ...tasks.take(4).map(
+          ...tasks
+              .take(4)
+              .map(
                 (task) => Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: HomeTaskRow(
@@ -404,9 +408,9 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
         if (action != null)
           GestureDetector(
@@ -414,9 +418,9 @@ class _SectionHeader extends StatelessWidget {
             child: Text(
               action!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
       ],
@@ -451,18 +455,18 @@ class _EmptyPanel extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             body,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.45,
-                ),
+              color: AppColors.textSecondary,
+              height: 1.45,
+            ),
           ),
         ],
       ),

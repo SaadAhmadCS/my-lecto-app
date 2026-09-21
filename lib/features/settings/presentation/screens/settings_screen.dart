@@ -5,7 +5,9 @@ import '../../../../core/constants/app_constants.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/user_profile.dart';
 import '../../../../core/dev/sample_data.dart';
+import '../../../../shared/widgets/page_title.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../timetable/data/timetable_dao.dart';
 import '../../../timetable/services/class_reminder_service.dart';
@@ -22,145 +24,278 @@ import '../../../../core/theme/app_spacing.dart';
 /// The app's version, shown in Settings and attached to feedback.
 const String appVersion = '1.0.0';
 
-/// Settings screen — app configuration and info.
+/// Settings screen — you, your week, and how the app behaves.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Settings',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: ListView(
-        // Bottom room for the floating nav dock.
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base,
-          AppSpacing.base,
-          AppSpacing.base,
-          AppSpacing.huge * 2.2,
-        ),
-        children: [
-          const _TimetableCard(),
-          const SizedBox(height: AppSpacing.xl),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          // Bottom room for the floating nav dock.
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+          children: [
+            const PageTitle(title: 'You', subtitle: 'Settings and your week'),
+            const SizedBox(height: 18),
+            const _ProfileCard(),
+            const SizedBox(height: 12),
+            const _TimetableCard(),
+            const SizedBox(height: 24),
 
-          // Read-only facts rather than taps that do nothing. Both are
-          // compile-time settings; tapping them used to say "Coming soon".
-          _buildSection(
-            context,
-            title: 'Recording',
-            children: [
-              _SettingsTile(
-                icon: Icons.timer_outlined,
-                title: 'Split every',
-                subtitle:
-                    '${AppConstants.defaultChunkDurationMinutes} minutes · '
-                    'limits what a crash can cost',
-              ),
-              _SettingsTile(
-                icon: Icons.audiotrack_rounded,
-                title: 'Audio quality',
-                subtitle:
-                    'Voice — HE-AAC '
-                    '${AppConstants.audioBitRate ~/ 1000}kbps mono, about '
-                    '${(AppConstants.audioBitRate / 8 * 3600 / 1000000).round()}MB an hour',
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-
-          _buildSection(
-            context,
-            title: 'Storage',
-            children: const [_ClearCacheTile()],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-
-          _buildSection(
-            context,
-            title: 'Notes',
-            children: const [_TranscriptionLanguageTile()],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-
-          // Dummy lectures for testing the UI; never in a release build.
-          if (kDebugMode) ...[
+            // Read-only facts rather than taps that do nothing. Both are
+            // compile-time settings; tapping them used to say "Coming soon".
             _buildSection(
-              context,
-              title: 'Developer',
-              children: const [_SampleDataTile()],
+              title: 'Recording',
+              children: [
+                _SettingsTile(
+                  icon: Icons.timer_rounded,
+                  color: AppColors.primary,
+                  title: 'Split every',
+                  subtitle:
+                      '${AppConstants.defaultChunkDurationMinutes} minutes · '
+                      'limits what a crash can cost',
+                ),
+                _SettingsTile(
+                  icon: Icons.graphic_eq_rounded,
+                  color: AppColors.inkSky,
+                  title: 'Audio quality',
+                  subtitle:
+                      'Voice · HE-AAC '
+                      '${AppConstants.audioBitRate ~/ 1000}kbps mono, about '
+                      '${(AppConstants.audioBitRate / 8 * 3600 / 1000000).round()}MB an hour',
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.xl),
-          ],
+            _buildSection(
+              title: 'Notes',
+              children: const [_TranscriptionLanguageTile()],
+            ),
+            _buildSection(
+              title: 'Storage',
+              children: const [_ClearCacheTile()],
+            ),
 
-          _buildSection(
-            context,
-            title: 'About',
-            children: const [
-              _SendFeedbackTile(),
-              _SettingsTile(
-                icon: Icons.info_outline_rounded,
-                title: 'Version',
-                subtitle: appVersion,
+            // Dummy lectures for testing the UI; never in a release build.
+            if (kDebugMode)
+              _buildSection(
+                title: 'Developer',
+                children: const [_SampleDataTile()],
               ),
-              _SettingsTile(
-                icon: Icons.lock_outline_rounded,
-                title: 'Private by design',
-                subtitle:
-                    'No account, no internet permission, nothing leaves this '
-                    'phone',
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-        ],
+
+            _buildSection(
+              title: 'About',
+              children: const [
+                _SendFeedbackTile(),
+                _SettingsTile(
+                  icon: Icons.lock_rounded,
+                  color: AppColors.inkMint,
+                  title: 'Private by design',
+                  subtitle:
+                      'No account, no internet permission, nothing leaves '
+                      'this phone',
+                ),
+                _SettingsTile(
+                  icon: Icons.info_rounded,
+                  color: AppColors.textSecondary,
+                  title: 'Version',
+                  subtitle: appVersion,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSection(
-    BuildContext context, {
+  Widget _buildSection({
     required String title,
     required List<Widget> children,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppColors.textTertiaryDark,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 10),
+            child: Text(
+              title.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+                color: AppColors.textMuted,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.darkSurface,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            border: Border.all(color: AppColors.darkBorder),
-          ),
-          child: Column(
-            children: [
-              for (int i = 0; i < children.length; i++) ...[
-                children[i],
-                if (i < children.length - 1)
-                  const Divider(
-                    height: 1,
-                    indent: AppSpacing.huge,
-                    color: AppColors.darkBorder,
-                  ),
+          Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                for (int i = 0; i < children.length; i++) ...[
+                  children[i],
+                  if (i < children.length - 1)
+                    const Divider(
+                      height: 1,
+                      indent: 66,
+                      color: AppColors.border,
+                    ),
+                ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Mascot, your name (tap to change) and a line about your study so far.
+class _ProfileCard extends StatefulWidget {
+  const _ProfileCard();
+
+  @override
+  State<_ProfileCard> createState() => _ProfileCardState();
+}
+
+class _ProfileCardState extends State<_ProfileCard> {
+  String _name = '';
+  int _lectures = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final feed = context.read<RecordingFeed>();
+    final name = await UserProfile.name();
+    final lectures = await feed.total();
+    if (!mounted) return;
+    setState(() {
+      _name = name;
+      _lectures = lectures;
+    });
+  }
+
+  Future<void> _editName() async {
+    final controller = TextEditingController(text: _name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('What should I call you?'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(hintText: 'Your name'),
+          onSubmitted: (value) => Navigator.of(ctx).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (name == null) return;
+    await UserProfile.setName(name);
+    if (mounted) setState(() => _name = name.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.primary,
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _editName,
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFF57049), Color(0xFFEC5A32)],
+            ),
+          ),
+          child: Row(
+            children: [
+              // A white ring, or the coral mascot melts into the coral card.
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: AppColors.textOnPrimary,
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: SvgPicture.asset(
+                  'assets/images/avatar_mascot.svg',
+                  width: 56,
+                  height: 56,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _name.isEmpty ? 'Add your name' : _name,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textOnPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _lectures == 0
+                          ? 'Your first lecture is one tap away'
+                          : '$_lectures lecture${_lectures == 1 ? '' : 's'} '
+                                'recorded · all on this phone',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textOnPrimary.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.textOnPrimary.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.edit_rounded,
+                  size: 17,
+                  color: AppColors.textOnPrimary,
+                ),
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -171,11 +306,15 @@ class _SettingsTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback? onTap;
 
+  /// The icon's colour; its tile is a soft tint of it.
+  final Color color;
+
   const _SettingsTile({
     required this.icon,
     required this.title,
     required this.subtitle,
     this.onTap,
+    this.color = AppColors.primary,
   });
 
   @override
@@ -183,33 +322,48 @@ class _SettingsTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base,
-          vertical: AppSpacing.md,
-        ),
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: AppColors.primary),
-            const SizedBox(width: AppSpacing.md),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 20, color: color),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
                     ),
                   ),
+                  const SizedBox(height: 1),
                   Text(
                     subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiaryDark,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      height: 1.35,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
               ),
             ),
+            if (onTap != null)
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textMuted,
+              ),
           ],
         ),
       ),
@@ -273,6 +427,7 @@ class _TranscriptionLanguageTileState
   Widget build(BuildContext context) {
     return _SettingsTile(
       icon: Icons.translate_rounded,
+      color: AppColors.inkLavender,
       title: 'Lecture language',
       subtitle: '${_language.label} · told to your AI when you share',
       onTap: _pickLanguage,
@@ -341,6 +496,7 @@ class _ClearCacheTileState extends State<_ClearCacheTile> {
   Widget build(BuildContext context) {
     return _SettingsTile(
       icon: Icons.cleaning_services_rounded,
+      color: const Color(0xFFA66E0A),
       title: 'Clear share cache',
       subtitle: _bytes == 0
           ? 'Nothing cached — your recordings are not affected'
@@ -486,7 +642,8 @@ class _SampleDataTileState extends State<_SampleDataTile> {
   @override
   Widget build(BuildContext context) {
     return _SettingsTile(
-      icon: _loaded ? Icons.delete_sweep_outlined : Icons.science_outlined,
+      icon: _loaded ? Icons.delete_sweep_rounded : Icons.science_rounded,
+      color: AppColors.inkSky,
       title: _loaded ? 'Remove sample data' : 'Load sample data',
       subtitle: _loaded
           ? 'Deletes the dummy lectures · your own are kept'
@@ -524,7 +681,8 @@ class _SendFeedbackTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SettingsTile(
-      icon: Icons.feedback_outlined,
+      icon: Icons.chat_bubble_rounded,
+      color: AppColors.primary,
       title: 'Send feedback',
       subtitle: 'Tell me what broke or what is missing',
       onTap: () => _send(context),

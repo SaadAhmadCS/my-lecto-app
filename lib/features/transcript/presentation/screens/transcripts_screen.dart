@@ -80,10 +80,9 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
       appBar: AppBar(
         title: Text(
           'Transcripts',
-          style: Theme.of(context)
-              .textTheme
-              .headlineMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         actions: [
           RecordingSortButton(
@@ -177,7 +176,10 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
                 color: AppColors.error,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               ),
-              child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+              child: const Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.white,
+              ),
             ),
             confirmDismiss: (direction) async {
               return await showDialog<bool>(
@@ -196,7 +198,9 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
                       child: const Text('Cancel'),
                     ),
                     TextButton(
-                      style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                      ),
                       onPressed: () => Navigator.of(context).pop(true),
                       child: const Text('Delete'),
                     ),
@@ -221,7 +225,11 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(ErrorMessages.from(e, action: 'delete the recording'))),
+                    SnackBar(
+                      content: Text(
+                        ErrorMessages.from(e, action: 'delete the recording'),
+                      ),
+                    ),
                   );
                 }
               }
@@ -263,9 +271,9 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
           const SizedBox(height: AppSpacing.xl),
           Text(
             'No transcripts yet',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: AppSpacing.sm),
           Padding(
@@ -274,8 +282,8 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
               'Record a lecture to generate your first transcript.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondaryDark,
-                  ),
+                color: AppColors.textSecondaryDark,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -283,9 +291,7 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
             onPressed: () => context.push('/record'),
             icon: const Icon(Icons.mic_rounded),
             label: const Text('Start Recording'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
           ),
         ],
       ),
@@ -299,8 +305,11 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.wifi_off_rounded,
-                size: 48, color: AppColors.textTertiaryDark),
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 48,
+              color: AppColors.textTertiaryDark,
+            ),
             const SizedBox(height: AppSpacing.base),
             Text(
               'Could not load recordings',
@@ -310,8 +319,8 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
             Text(
               _error ?? ErrorMessages.generic,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondaryDark,
-                  ),
+                color: AppColors.textSecondaryDark,
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
             OutlinedButton.icon(

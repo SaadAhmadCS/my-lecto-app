@@ -16,15 +16,23 @@ class SubjectDao {
   Future<List<Map<String, dynamic>>> listSubjects() async {
     final db = await RecordingDatabase.database;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT s.id, s.name, s.color, s.created_at,
              COUNT(r.id) AS recording_count,
-             MAX(r.created_at) AS last_recorded_at
+             MAX(r.created_at) AS last_recorded_at,
+             COALESCE(SUM(r.total_duration_ms), 0) AS total_ms,
+             SUM(CASE WHEN r.id IS NOT NULL
+                       AND (r.notes_markdown IS NULL OR r.notes_markdown = '')
+                       AND r.status != 'recording'
+                      THEN 1 ELSE 0 END) AS awaiting
       FROM subjects s
       LEFT JOIN recordings r ON r.subject_id = s.id
       GROUP BY s.id
       ORDER BY (s.id = ?) ASC, s.name COLLATE NOCASE ASC
-    ''', [RecordingDatabase.unsortedSubjectId]);
+    ''',
+      [RecordingDatabase.unsortedSubjectId],
+    );
 
     return rows.map(_toApiShape).toList();
   }
@@ -32,15 +40,23 @@ class SubjectDao {
   Future<Map<String, dynamic>?> getSubject(String id) async {
     final db = await RecordingDatabase.database;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT s.id, s.name, s.color, s.created_at,
              COUNT(r.id) AS recording_count,
-             MAX(r.created_at) AS last_recorded_at
+             MAX(r.created_at) AS last_recorded_at,
+             COALESCE(SUM(r.total_duration_ms), 0) AS total_ms,
+             SUM(CASE WHEN r.id IS NOT NULL
+                       AND (r.notes_markdown IS NULL OR r.notes_markdown = '')
+                       AND r.status != 'recording'
+                      THEN 1 ELSE 0 END) AS awaiting
       FROM subjects s
       LEFT JOIN recordings r ON r.subject_id = s.id
       WHERE s.id = ?
       GROUP BY s.id
-    ''', [id]);
+    ''',
+      [id],
+    );
 
     return rows.isEmpty ? null : _toApiShape(rows.first);
   }
@@ -71,11 +87,7 @@ class SubjectDao {
     };
   }
 
-  Future<void> updateSubject(
-    String id, {
-    String? name,
-    String? color,
-  }) async {
+  Future<void> updateSubject(String id, {String? name, String? color}) async {
     if (name == null && color == null) return;
 
     final db = await RecordingDatabase.database;
@@ -116,11 +128,14 @@ class SubjectDao {
   }
 
   static Map<String, dynamic> _toApiShape(Map<String, Object?> row) => {
-        'id': row['id'],
-        'name': row['name'],
-        'color': row['color'],
-        'createdAt': row['created_at'],
-        'lastRecordedAt': row['last_recorded_at'],
-        '_count': {'recordings': (row['recording_count'] as int?) ?? 0},
-      };
+    'id': row['id'],
+    'name': row['name'],
+    'color': row['color'],
+    'createdAt': row['created_at'],
+    'lastRecordedAt': row['last_recorded_at'],
+    'totalDurationMs': (row['total_ms'] as int?) ?? 0,
+    // Finished lectures still waiting for notes from the student's AI.
+    'awaitingCount': (row['awaiting'] as int?) ?? 0,
+    '_count': {'recordings': (row['recording_count'] as int?) ?? 0},
+  };
 }

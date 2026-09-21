@@ -10,6 +10,7 @@ import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/home/presentation/screens/quizzes_screen.dart';
 import '../../features/subjects/presentation/screens/subject_detail_screen.dart';
 import '../../features/subjects/presentation/screens/subjects_screen.dart';
+import '../../features/timetable/presentation/screens/timetable_import_screen.dart';
 import '../../features/timetable/presentation/screens/timetable_screen.dart';
 import '../../features/transcript/presentation/screens/transcripts_screen.dart';
 import '../../shared/widgets/app_scaffold.dart';
@@ -29,6 +30,7 @@ class AppRoutes {
   static const String tasks = '/tasks';
   static const String calendar = '/calendar';
   static const String timetable = '/timetable';
+  static const String timetableImport = '/timetable-import';
 }
 
 /// GoRouter configuration.
@@ -102,6 +104,10 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.timetable,
         builder: (context, state) => const TimetableScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.timetableImport,
+        builder: (context, state) => const TimetableImportScreen(),
       ),
       GoRoute(
         path: AppRoutes.quizzes,

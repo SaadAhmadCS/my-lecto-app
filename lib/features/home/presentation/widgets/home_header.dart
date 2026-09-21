@@ -80,8 +80,11 @@ class HomeHeader extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.bolt_rounded,
-                    size: 16, color: AppColors.warning),
+                const Icon(
+                  Icons.bolt_rounded,
+                  size: 16,
+                  color: AppColors.warning,
+                ),
                 const SizedBox(width: 2),
                 Text(
                   '$streakDays',
@@ -101,14 +104,29 @@ class HomeHeader extends StatelessWidget {
   }
 
   static String _weekday(DateTime date) => const [
-        'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-        'Friday', 'Saturday', 'Sunday',
-      ][date.weekday - 1];
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ][date.weekday - 1];
 
   static String _month(DateTime date) => const [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December',
-      ][date.month - 1];
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ][date.month - 1];
 }
 
 class _BellButton extends StatelessWidget {

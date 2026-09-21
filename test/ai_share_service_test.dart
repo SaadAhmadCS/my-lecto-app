@@ -52,10 +52,10 @@ void main() {
       // Guards the contract between the prompt and NotesParser: the headings
       // the prompt asks for must be the ones the parser recognises.
       final prompt = AiShareService.buildPrompt(title: 'Lecture');
-      final headings = RegExp(r'^## .+$', multiLine: true)
-          .allMatches(prompt)
-          .map((m) => m.group(0)!)
-          .toList();
+      final headings = RegExp(
+        r'^## .+$',
+        multiLine: true,
+      ).allMatches(prompt).map((m) => m.group(0)!).toList();
 
       final reply = StringBuffer();
       for (final heading in headings) {
@@ -150,8 +150,10 @@ void main() {
     test('tells a long lecture explicitly not to transcribe', () {
       // Without this the model transcribes anyway and runs out of room for
       // the notes, which is the failure this threshold exists to prevent.
-      final prompt =
-          AiShareService.buildPrompt(title: 'L', askForTranscript: false);
+      final prompt = AiShareService.buildPrompt(
+        title: 'L',
+        askForTranscript: false,
+      );
 
       expect(prompt, contains('Do NOT include a transcript'));
       expect(prompt, contains(AiShareService.summaryHeading));

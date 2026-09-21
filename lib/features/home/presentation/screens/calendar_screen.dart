@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/widgets/page_title.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
 import '../../../subjects/data/subject_dao.dart';
 import '../../data/home_digest.dart';
-import '../widgets/upcoming_card.dart';
+import '../widgets/deadline_tile.dart';
 
-/// Quizzes, assignments and anything else dated, grouped by day.
+/// Quizzes, assignments and anything else dated, week by week.
 ///
 /// Nothing is scheduled by hand: these are the deadlines your AI pulled out of
 /// each lecture's notes.
@@ -46,126 +47,219 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  /// Items grouped under a day heading, in date order; undated ones last.
-  List<(String, List<UpcomingItem>)> get _groups {
-    final groups = <String, List<UpcomingItem>>{};
-    for (final item in _items) {
-      groups.putIfAbsent(_dayLabel(item), () => []).add(item);
-    }
-    return [for (final entry in groups.entries) (entry.key, entry.value)];
+  void _open(UpcomingItem item) {
+    context
+        .push(
+          '/recording/${item.recordingId}'
+          '?title=${Uri.encodeComponent(item.recordingTitle)}',
+        )
+        .then((_) => _load());
   }
 
-  static String _dayLabel(UpcomingItem item) {
-    final date = item.date;
-    if (date == null) return 'No date given';
-    switch (item.daysAway) {
-      case 0:
-        return 'Today';
-      case 1:
-        return 'Tomorrow';
+  /// Items by week: this week, next week, later, and those with no date.
+  List<(String, List<UpcomingItem>)> get _weeks {
+    String label(UpcomingItem item) {
+      final days = item.daysAway;
+      if (days == null) return 'No date';
+      // Weeks start on Monday, like the timetable.
+      final weekdayToday = DateTime.now().weekday;
+      final week = (days + weekdayToday - 1) ~/ 7;
+      return switch (week) {
+        0 => 'This week',
+        1 => 'Next week',
+        _ => 'Later',
+      };
     }
-    const days = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday',
+
+    final groups = <String, List<UpcomingItem>>{};
+    for (final item in _items) {
+      groups.putIfAbsent(label(item), () => []).add(item);
+    }
+    return [
+      for (final name in const ['This week', 'Next week', 'Later', 'No date'])
+        if (groups[name] != null) (name, groups[name]!),
     ];
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${days[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final weekItems = _items.where((i) => (i.daysAway ?? 99) <= 7);
+    final quizzes = weekItems.where((i) => i.kind == UpcomingKind.quiz).length;
+    final assignments = weekItems
+        .where((i) => i.kind == UpcomingKind.assignment)
+        .length;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        title: Text(
-          'Calendar',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                  AppSpacing.lg,
-                  AppSpacing.huge * 2.2,
-                ),
-                children: [
-                  if (_items.isEmpty)
-                    _buildEmpty(context)
-                  else
-                    for (final (label, items) in _groups) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: AppSpacing.sm,
-                          bottom: AppSpacing.md,
-                        ),
+      body: SafeArea(
+        bottom: false,
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              )
+            : RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: _load,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+                  children: [
+                    const PageTitle(
+                      title: 'Calendar',
+                      subtitle: 'Everything dated in your notes',
+                    ),
+                    const SizedBox(height: 16),
+                    if (_items.isEmpty)
+                      const _EmptyCalendar()
+                    else ...[
+                      Row(
+                        children: [
+                          _Stat(
+                            count: quizzes,
+                            label: quizzes == 1 ? 'quiz' : 'quizzes',
+                            color: AppColors.inkLavender,
+                            background: AppColors.tintLavender,
+                          ),
+                          const SizedBox(width: 10),
+                          _Stat(
+                            count: assignments,
+                            label: assignments == 1
+                                ? 'assignment'
+                                : 'assignments',
+                            color: const Color(0xFF97245C),
+                            background: AppColors.tintPink,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4),
                         child: Text(
-                          label,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
+                          'in the next 7 days',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ),
-                      for (final item in items)
+                      for (final (label, items) in _weeks) ...[
+                        const SizedBox(height: 20),
                         Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                          child: SizedBox(
-                            height: 120,
-                            child: UpcomingCard(
-                              item: item,
-                              fullWidth: true,
-                              onTap: () => context
-                                  .push(
-                                    '/recording/${item.recordingId}'
-                                    '?title=${Uri.encodeComponent(item.recordingTitle)}',
-                                  )
-                                  .then((_) => _load()),
+                          padding: const EdgeInsets.only(left: 4, bottom: 10),
+                          child: Text(
+                            '${label.toUpperCase()}  ·  ${items.length}',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1,
+                              color: AppColors.textMuted,
                             ),
                           ),
                         ),
+                        for (final item in items)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: DeadlineTile(
+                              item: item,
+                              onTap: () => _open(item),
+                            ),
+                          ),
+                      ],
                     ],
-                ],
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
+}
 
-  Widget _buildEmpty(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.huge),
+class _Stat extends StatelessWidget {
+  final int count;
+  final String label;
+  final Color color;
+  final Color background;
+
+  const _Stat({
+    required this.count,
+    required this.label,
+    required this.color,
+    required this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 30,
+                height: 1,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyCalendar extends StatelessWidget {
+  const _EmptyCalendar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(21),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Column(
         children: [
-          const Icon(Icons.event_note_rounded,
-              size: 44, color: AppColors.textMuted),
-          const SizedBox(height: AppSpacing.base),
-          Text(
+          SvgPicture.asset('assets/images/timetable.svg', width: 120),
+          const Text(
             'Nothing coming up',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Quizzes and deadlines a lecture mentions show up here, by day.',
+          const SizedBox(height: 6),
+          const Text(
+            'Quizzes and deadlines a lecture mentions show up here, week by '
+            'week.',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.45,
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),

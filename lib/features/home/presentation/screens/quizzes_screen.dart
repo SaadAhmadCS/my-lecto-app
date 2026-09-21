@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/widgets/page_title.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
 import '../../../subjects/data/subject_dao.dart';
 import '../../data/home_digest.dart';
-import '../widgets/upcoming_card.dart';
+import '../widgets/deadline_tile.dart';
 
 /// Quizzes and exams your lectures mentioned.
 ///
 /// Nothing is scheduled by hand: these are the dated items from your notes
-/// whose wording reads like a quiz rather than an assignment.
+/// whose wording reads like a quiz rather than an assignment. The next one
+/// gets the spotlight; the rest follow as a timeline.
 class QuizzesScreen extends StatefulWidget {
   const QuizzesScreen({super.key});
 
@@ -48,80 +50,227 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
     });
   }
 
+  void _open(UpcomingItem item) {
+    context
+        .push(
+          '/recording/${item.recordingId}'
+          '?title=${Uri.encodeComponent(item.recordingTitle)}',
+        )
+        .then((_) => _load());
+  }
+
   @override
   Widget build(BuildContext context) {
+    final next = _items.isEmpty ? null : _items.first;
+    final rest = _items.skip(1).toList();
+    final thisWeek = rest.where((i) => (i.daysAway ?? 99) <= 7).toList();
+    final later = rest.where((i) => (i.daysAway ?? 99) > 7).toList();
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        title: Text(
-          'Quizzes',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : _items.isEmpty
-              ? _buildEmpty(context)
-              : RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                      AppSpacing.lg,
-                      AppSpacing.huge * 2,
+      body: SafeArea(
+        bottom: false,
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              )
+            : RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: _load,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+                  children: [
+                    const PageTitle(
+                      title: 'Quizzes',
+                      subtitle: 'Tests and exams your lectures mentioned',
+                      showBack: true,
                     ),
-                    itemCount: _items.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: AppSpacing.md),
-                    itemBuilder: (context, index) => SizedBox(
-                      height: 132,
-                      child: UpcomingCard(
-                        item: _items[index],
-                        fullWidth: true,
-                        onTap: () => context.push(
-                          '/recording/${_items[index].recordingId}'
-                          '?title=${Uri.encodeComponent(_items[index].recordingTitle)}',
-                        ),
-                      ),
+                    const SizedBox(height: 18),
+                    _NextQuizHero(
+                      next: next,
+                      onTap: next == null ? null : () => _open(next),
                     ),
-                  ),
+                    if (thisWeek.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _Section('This week', thisWeek.length),
+                      for (final item in thisWeek) _tile(item),
+                    ],
+                    if (later.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _Section('Later', later.length),
+                      for (final item in later) _tile(item),
+                    ],
+                  ],
                 ),
+              ),
+      ),
     );
   }
 
-  Widget _buildEmpty(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.quiz_rounded, size: 44, color: AppColors.textMuted),
-            const SizedBox(height: AppSpacing.base),
-            Text(
-              'No quizzes coming up',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+  Widget _tile(UpcomingItem item) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: DeadlineTile(item: item, onTap: () => _open(item)),
+  );
+}
+
+/// The next quiz, big — or a calm "nothing coming up".
+class _NextQuizHero extends StatelessWidget {
+  final UpcomingItem? next;
+  final VoidCallback? onTap;
+
+  const _NextQuizHero({required this.next, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final quiz = next;
+
+    return Material(
+      color: AppColors.tintSky,
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 176,
+          child: Stack(
+            children: [
+              Positioned(
+                right: -6,
+                bottom: -8,
+                child: SvgPicture.asset(
+                  'assets/images/home_quizzes.svg',
+                  width: 132,
+                  height: 132,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 124, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        quiz == null ? 'ALL CLEAR' : 'NEXT UP',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1,
+                          color: AppColors.inkSky,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      quiz?.title ?? 'No quizzes coming up',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        height: 1.2,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.4,
+                        color: AppColors.inkSky,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      quiz == null
+                          ? 'When a lecture mentions a quiz or exam with a '
+                                'date, it shows up here.'
+                          : quiz.subjectName ?? quiz.recordingTitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.inkSky.withValues(alpha: 0.75),
+                      ),
+                    ),
+                    const Spacer(),
+                    if (quiz != null) _BigCountdown(daysAway: quiz.daysAway),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "in 3 days", as a solid pill that turns coral when it is close.
+class _BigCountdown extends StatelessWidget {
+  final int? daysAway;
+
+  const _BigCountdown({required this.daysAway});
+
+  @override
+  Widget build(BuildContext context) {
+    final days = daysAway;
+    final label = switch (days) {
+      null => 'No date given',
+      0 => 'Today',
+      1 => 'Tomorrow',
+      _ => 'in $days days',
+    };
+    final urgent = days != null && days <= 1;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: urgent ? AppColors.primary : AppColors.inkSky,
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.timer_outlined,
+            size: 15,
+            color: AppColors.textOnPrimary,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textOnPrimary,
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'When a lecture mentions a quiz or exam with a date, it shows up '
-              'here automatically.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.5,
-                  ),
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  final String label;
+  final int count;
+
+  const _Section(this.label, this.count);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 10),
+      child: Text(
+        '${label.toUpperCase()}  ·  $count',
+        style: const TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1,
+          color: AppColors.textMuted,
         ),
       ),
     );

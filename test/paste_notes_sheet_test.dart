@@ -30,12 +30,14 @@ Deadlines
           builder: (context) => Scaffold(
             body: ElevatedButton(
               onPressed: () async {
-                results.add(await PasteNotesSheet.show(
-                  context,
-                  notes: NotesParser.parse(markdown),
-                  markdownStyle: MarkdownStyleSheet(),
-                  replacesExisting: replacesExisting,
-                ));
+                results.add(
+                  await PasteNotesSheet.show(
+                    context,
+                    notes: NotesParser.parse(markdown),
+                    markdownStyle: MarkdownStyleSheet(),
+                    replacesExisting: replacesExisting,
+                  ),
+                );
               },
               child: const Text('open'),
             ),
@@ -66,13 +68,16 @@ Deadlines
   });
 
   testWidgets('counts read naturally for one and for many', (tester) async {
-    await openSheet(tester, markdown: '''
+    await openSheet(
+      tester,
+      markdown: '''
 Tasks
  * [ ] One
  * [ ] Two
 Deadlines
  * 2026-10-01 — Quiz
-''');
+''',
+    );
 
     expect(find.textContaining('2 tasks'), findsOneWidget);
     expect(find.textContaining('1 deadline ·'), findsNothing);
@@ -117,19 +122,21 @@ Deadlines
   });
 
   testWidgets('warns when it would replace existing notes', (tester) async {
-    await openSheet(
-      tester,
-      markdown: structured,
-      replacesExisting: true,
-    );
+    await openSheet(tester, markdown: structured, replacesExisting: true);
 
-    expect(find.textContaining('replaces the notes already here'), findsOneWidget);
+    expect(
+      find.textContaining('replaces the notes already here'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('no replace warning for a first paste', (tester) async {
     await openSheet(tester, markdown: structured);
 
-    expect(find.textContaining('replaces the notes already here'), findsNothing);
+    expect(
+      find.textContaining('replaces the notes already here'),
+      findsNothing,
+    );
   });
 
   testWidgets('tasks are not tickable before saving', (tester) async {

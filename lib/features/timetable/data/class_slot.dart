@@ -70,6 +70,27 @@ class ClassSlot {
     return minute >= startMinute - earlyBy.inMinutes && minute < endMinute;
   }
 
+  /// When this class next starts after [now].
+  DateTime nextStart(DateTime now) {
+    var date = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      startMinute ~/ 60,
+      startMinute % 60,
+    );
+    while (date.weekday != weekday || !date.isAfter(now)) {
+      date = DateTime(
+        date.year,
+        date.month,
+        date.day + 1,
+        date.hour,
+        date.minute,
+      );
+    }
+    return date;
+  }
+
   /// The end of this class on [day]'s date.
   DateTime endOn(DateTime day) =>
       DateTime(day.year, day.month, day.day, endMinute ~/ 60, endMinute % 60);
@@ -84,4 +105,13 @@ class ClassSlot {
     'Saturday',
     'Sunday',
   ];
+}
+
+/// The icon for a kind of class, so a lab reads apart from a lecture at a
+/// glance wherever classes are listed or picked.
+extension ClassKindIcon on ClassSlot {
+  IconData get kindIcon => isLab ? labIcon : lectureIcon;
+
+  static const IconData labIcon = Icons.science_rounded;
+  static const IconData lectureIcon = Icons.menu_book_rounded;
 }

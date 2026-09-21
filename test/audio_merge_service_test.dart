@@ -22,18 +22,18 @@ void main() {
   void handleMerge({bool fail = false, bool writeOutput = true}) {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      calls.add(call);
-      if (fail) {
-        throw PlatformException(code: 'merge_failed', message: 'nope');
-      }
-      final output = call.arguments['output'] as String;
-      if (writeOutput) {
-        final file = File(output);
-        await file.create(recursive: true);
-        await file.writeAsString('merged');
-      }
-      return output;
-    });
+          calls.add(call);
+          if (fail) {
+            throw PlatformException(code: 'merge_failed', message: 'nope');
+          }
+          final output = call.arguments['output'] as String;
+          if (writeOutput) {
+            final file = File(output);
+            await file.create(recursive: true);
+            await file.writeAsString('merged');
+          }
+          return output;
+        });
   }
 
   const pathProvider = MethodChannel('plugins.flutter.io/path_provider');
@@ -46,9 +46,9 @@ void main() {
     // implementation in a unit test.
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProvider, (call) async {
-      if (call.method == 'getTemporaryDirectory') return root.path;
-      return null;
-    });
+          if (call.method == 'getTemporaryDirectory') return root.path;
+          return null;
+        });
   });
 
   tearDown(() async {

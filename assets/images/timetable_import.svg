@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="spark" x1="92" y1="52" x2="124" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF8A5C"/>
+      <stop offset="100%" stop-color="#EC5A32"/>
+    </linearGradient>
+    <linearGradient id="shot" x1="30" y1="56" x2="98" y2="148" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F3F0FF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient lavender glow -->
+  <ellipse cx="100" cy="118" rx="74" ry="46" fill="#5244E3" fill-opacity="0.1"/>
+
+  <!-- The timetable screenshot, a little askew -->
+  <g transform="rotate(-8 64 102)">
+    <rect x="28" y="54" width="72" height="96" rx="12" fill="url(#shot)"/>
+    <rect x="37" y="63" width="54" height="8" rx="4" fill="#5244E3" fill-opacity="0.35"/>
+    <rect x="37" y="79" width="16" height="11" rx="3" fill="#5244E3" fill-opacity="0.18"/>
+    <rect x="56" y="79" width="16" height="11" rx="3" fill="#F57049" fill-opacity="0.55"/>
+    <rect x="75" y="79" width="16" height="11" rx="3" fill="#5244E3" fill-opacity="0.18"/>
+    <rect x="37" y="94" width="16" height="11" rx="3" fill="#128B62" fill-opacity="0.45"/>
+    <rect x="56" y="94" width="16" height="11" rx="3" fill="#5244E3" fill-opacity="0.18"/>
+    <rect x="75" y="94" width="16" height="11" rx="3" fill="#2E78E6" fill-opacity="0.45"/>
+    <rect x="37" y="109" width="16" height="11" rx="3" fill="#5244E3" fill-opacity="0.18"/>
+    <rect x="56" y="109" width="16" height="11" rx="3" fill="#5244E3" fill-opacity="0.18"/>
+    <rect x="75" y="109" width="16" height="11" rx="3" fill="#DC2626" fill-opacity="0.4"/>
+    <rect x="37" y="124" width="35" height="11" rx="3" fill="#7C3AED" fill-opacity="0.35"/>
+  </g>
+
+  <!-- Your AI reading it -->
+  <path d="M108 50L113.5 64.5L128 70L113.5 75.5L108 90L102.5 75.5L88 70L102.5 64.5L108 50Z" fill="url(#spark)"/>
+
+  <!-- The tidy class list it becomes -->
+  <rect x="112" y="92" width="64" height="72" rx="12" fill="#FFFFFF"/>
+  <circle cx="124" cy="108" r="4.5" fill="#5244E3"/>
+  <rect x="133" y="105.5" width="32" height="5" rx="2.5" fill="#1C1917" fill-opacity="0.2"/>
+  <circle cx="124" cy="124" r="4.5" fill="#DC2626"/>
+  <rect x="133" y="121.5" width="26" height="5" rx="2.5" fill="#1C1917" fill-opacity="0.2"/>
+  <circle cx="124" cy="140" r="4.5" fill="#128B62"/>
+  <rect x="133" y="137.5" width="30" height="5" rx="2.5" fill="#1C1917" fill-opacity="0.2"/>
+  <circle cx="124" cy="156" r="4.5" fill="#2E78E6" fill-opacity="0.9"/>
+  <rect x="133" y="153.5" width="22" height="5" rx="2.5" fill="#1C1917" fill-opacity="0.2"/>
+
+  <!-- Done -->
+  <circle cx="172" cy="94" r="12" fill="#128B62"/>
+  <path d="M166.5 94L170.5 98L177.5 90.5" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Sparkles -->
+  <path d="M150 42L152 47L157 49L152 51L150 56L148 51L143 49L148 47L150 42Z" fill="#5244E3" fill-opacity="0.7"/>
+  <circle cx="30" cy="48" r="3" fill="#F57049" fill-opacity="0.6"/>
+</svg>

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
 
 /// Sort orders for recording lists (ORG-005).
 enum RecordingSort {
@@ -82,8 +81,10 @@ String formatRecordingDuration(Duration d) {
   return '${d.inSeconds}s';
 }
 
-// ─── Recording Card Widget ─────────────────────────────────────────
+// ─── Recording Card ────────────────────────────────────────────────
 
+/// One lecture in a list: a date block in its subject's colour, the title,
+/// when and how long, and whether it still needs the student's AI.
 class RecordingCard extends StatelessWidget {
   final Map<String, dynamic> recording;
   final VoidCallback onTap;
@@ -96,138 +97,149 @@ class RecordingCard extends StatelessWidget {
     this.showSubject = true,
   });
 
+  static const _months = [
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final title = recording['title'] as String? ?? 'Untitled';
-    final status = recording['processingStatus'] as String? ?? 'pending';
-    final createdAt = recording['createdAt'] as String?;
-    final durationMs = recording['totalDurationMs'] as int? ?? 0;
-    final chunkCount =
-        (recording['_count'] as Map<String, dynamic>?)?['chunks'] as int? ?? 0;
+    final awaiting = recording['processingStatus'] == 'awaiting_paste';
+    final created = DateTime.tryParse(recording['createdAt'] as String? ?? '');
+    final duration = Duration(
+      milliseconds: recording['totalDurationMs'] as int? ?? 0,
+    );
     final subject = recording['subject'] as Map<String, dynamic>?;
+    final color = AppColors.fromHex(subject?['color'] as String?);
+    final ink = Color.lerp(color, Colors.black, 0.35)!;
 
-    final statusInfo = _getStatusInfo(status);
-    final duration = Duration(milliseconds: durationMs);
-    final timeAgo = _formatTimeAgo(createdAt);
+    final meta = [
+      if (created != null) _when(created),
+      if (duration.inSeconds > 0) formatRecordingDuration(duration),
+    ].join(' · ');
 
     return Material(
-      color: AppColors.darkSurface,
-      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: AppSpacing.cardPadding,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.darkBorder),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              // Title row
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  _StatusBadge(
-                    label: statusInfo.label,
-                    color: statusInfo.color,
-                    icon: statusInfo.icon,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSpacing.sm),
-
-              // Subject tag
-              if (showSubject && subject != null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Color(
-                      int.parse(
-                        (subject['color'] as String? ?? '#6366F1').replaceFirst(
-                          '#',
-                          '0xFF',
-                        ),
-                      ),
-                    ).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                  ),
-                  child: Text(
-                    subject['name'] as String? ?? '',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Color(
-                        int.parse(
-                          (subject['color'] as String? ?? '#6366F1')
-                              .replaceFirst('#', '0xFF'),
-                        ),
-                      ),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+              Container(
+                width: 56,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.13),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
-
-              // Meta row
-              Row(
-                children: [
-                  Icon(
-                    Icons.schedule_rounded,
-                    size: 14,
-                    color: AppColors.textTertiaryDark,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    timeAgo,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiaryDark,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.base),
-                  if (duration.inSeconds > 0) ...[
-                    Icon(
-                      Icons.timer_outlined,
-                      size: 14,
-                      color: AppColors.textTertiaryDark,
-                    ),
-                    const SizedBox(width: 4),
+                child: created == null
+                    ? Icon(Icons.mic_rounded, color: ink)
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${created.day}',
+                            style: TextStyle(
+                              fontSize: 22,
+                              height: 1.05,
+                              fontWeight: FontWeight.w900,
+                              color: ink,
+                            ),
+                          ),
+                          Text(
+                            _months[created.month - 1],
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: ink.withValues(alpha: 0.75),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      formatRecordingDuration(duration),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textTertiaryDark,
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        height: 1.25,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.base),
-                  ],
-                  Icon(
-                    Icons.layers_outlined,
-                    size: 14,
-                    color: AppColors.textTertiaryDark,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$chunkCount chunks',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textTertiaryDark,
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        if (showSubject && subject != null) ...[
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                        ],
+                        Expanded(
+                          child: Text(
+                            [
+                              if (showSubject && subject != null)
+                                subject['name'] as String? ?? '',
+                              meta,
+                            ].where((s) => s.isNotEmpty).join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
+              awaiting
+                  ? const _Pill(
+                      icon: Icons.auto_awesome_rounded,
+                      label: 'Needs AI',
+                      background: AppColors.primary,
+                      foreground: AppColors.textOnPrimary,
+                    )
+                  : const _Pill(
+                      icon: Icons.check_rounded,
+                      label: 'Notes',
+                      background: AppColors.successBg,
+                      foreground: AppColors.success,
+                    ),
             ],
           ),
         ),
@@ -235,113 +247,56 @@ class RecordingCard extends StatelessWidget {
     );
   }
 
-  _StatusInfo _getStatusInfo(String status) {
-    switch (status) {
-      case 'completed':
-        return _StatusInfo(
-          'Ready',
-          AppColors.success,
-          Icons.check_circle_rounded,
-        );
-      case 'transcribing':
-      case 'transcribed':
-      case 'assembling':
-      case 'assembled':
-      case 'summarizing':
-        return _StatusInfo(
-          'Processing',
-          AppColors.info,
-          Icons.autorenew_rounded,
-        );
-      case 'pending':
-        return _StatusInfo(
-          'Queued',
-          AppColors.warning,
-          Icons.hourglass_empty_rounded,
-        );
-      // Kept on this device, waiting for the student's own AI app.
-      case 'awaiting_paste':
-        return _StatusInfo(
-          'Needs your AI',
-          AppColors.primary,
-          Icons.auto_awesome_rounded,
-        );
-      case 'failed_transcription':
-      case 'failed_assembly':
-      case 'failed_summary':
-        return _StatusInfo(
-          'Failed',
-          AppColors.error,
-          Icons.error_outline_rounded,
-        );
-      default:
-        return _StatusInfo(
-          'New',
-          AppColors.textTertiaryDark,
-          Icons.fiber_new_rounded,
-        );
+  /// "Today 9:10", "Yesterday", "Mon", then the date.
+  static String _when(DateTime date) {
+    final now = DateTime.now();
+    final days = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).difference(DateTime(date.year, date.month, date.day)).inDays;
+    final time = '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    if (days == 0) return 'Today $time';
+    if (days == 1) return 'Yesterday $time';
+    if (days < 7) {
+      return '${const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1]} $time';
     }
-  }
-
-  String _formatTimeAgo(String? iso) {
-    if (iso == null) return '';
-    try {
-      final date = DateTime.parse(iso);
-      final now = DateTime.now();
-      final diff = now.difference(date);
-
-      if (diff.inDays > 7) {
-        return '${date.day}/${date.month}/${date.year}';
-      }
-      if (diff.inDays > 0) return '${diff.inDays}d ago';
-      if (diff.inHours > 0) return '${diff.inHours}h ago';
-      if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
-      return 'Just now';
-    } catch (_) {
-      return '';
-    }
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
 
-class _StatusInfo {
-  final String label;
-  final Color color;
+class _Pill extends StatelessWidget {
   final IconData icon;
-  const _StatusInfo(this.label, this.color, this.icon);
-}
-
-class _StatusBadge extends StatelessWidget {
   final String label;
-  final Color color;
-  final IconData icon;
+  final Color background;
+  final Color foreground;
 
-  const _StatusBadge({
-    required this.label,
-    required this.color,
+  const _Pill({
     required this.icon,
+    required this.label,
+    required this.background,
+    required this.foreground,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+        color: background,
+        borderRadius: BorderRadius.circular(100),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
+          Icon(icon, size: 12, color: foreground),
           const SizedBox(width: 4),
           Text(
             label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: foreground,
             ),
           ),
         ],

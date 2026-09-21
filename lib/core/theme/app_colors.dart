@@ -90,6 +90,15 @@ class AppColors {
     Color(0xFF7C756D), // Stone
   ];
 
+  /// A subject's stored colour ("#5244e3"), or coral if it is missing or
+  /// malformed.
+  static Color fromHex(String? hex) {
+    final digits = (hex ?? '').replaceFirst('#', '');
+    final value = int.tryParse(digits, radix: 16);
+    if (value == null || digits.length != 6) return primary;
+    return Color(0xFF000000 | value);
+  }
+
   // === Migration shims ===
   // The app was dark-themed and these names are used across screens that have
   // not been rebuilt yet. They point at the new palette so nothing looks out

@@ -1,12 +1,15 @@
-# Regenerate: dart run flutter_native_splash:create
-# Dark background matches the app, so there's no white flash before the
-# first Flutter frame. Placeholder logo — see flutter_launcher_icons.yaml.
+# Regenerate: flutter test tool/render_splash_test.dart   (the mascot PNGs)
+#             dart run flutter_native_splash:create
+#
+# Coral with the mascot's face, the first frame of the animated intro
+# (lib/shared/widgets/launch_intro.dart). The intro starts from exactly this
+# picture — same colour, same face, same size — so the handoff is invisible.
 flutter_native_splash:
-  color: "#0F0F14"
-  image: assets/branding/splash_logo.png
+  color: "#F16743"
+  image: assets/branding/splash_mascot.png
   android_12:
-    color: "#0F0F14"
-    image: assets/branding/splash_logo_android12.png
+    color: "#F16743"
+    image: assets/branding/splash_mascot_android12.png
   android: true
   ios: false # no iOS project yet
   web: false

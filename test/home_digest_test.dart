@@ -11,7 +11,11 @@ UpcomingItem _item(String title, {int? daysFromNow, UpcomingKind? kind}) {
     recordingTitle: 'Lecture',
     date: daysFromNow == null
         ? null
-        : DateTime(now.year, now.month, now.day).add(Duration(days: daysFromNow)),
+        : DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).add(Duration(days: daysFromNow)),
   );
 }
 
@@ -64,54 +68,59 @@ void main() {
 
   group('HomeDigest', () {
     test('counts only open tasks', () {
-      final digest = HomeDigest(tasks: [
-        _task('a'),
-        _task('b', done: true),
-        _task('c'),
-      ]);
+      final digest = HomeDigest(
+        tasks: [_task('a'), _task('b', done: true), _task('c')],
+      );
       expect(digest.openTaskCount, 2);
     });
 
     test('orders open tasks soonest first, undated last, done at the end', () {
-      final digest = HomeDigest(tasks: [
-        _task('undated'),
-        _task('later', dueInDays: 5),
-        _task('finished', done: true),
-        _task('sooner', dueInDays: 1),
-      ]);
-      expect(
-        digest.todayTasks.map((task) => task.text),
-        ['sooner', 'later', 'undated', 'finished'],
+      final digest = HomeDigest(
+        tasks: [
+          _task('undated'),
+          _task('later', dueInDays: 5),
+          _task('finished', done: true),
+          _task('sooner', dueInDays: 1),
+        ],
       );
+      expect(digest.todayTasks.map((task) => task.text), [
+        'sooner',
+        'later',
+        'undated',
+        'finished',
+      ]);
     });
 
     test('drops items that have already passed', () {
-      final digest = HomeDigest(upcoming: [
-        _item('Quiz 1', daysFromNow: -3),
-        _item('Quiz 2', daysFromNow: 2),
-      ]);
+      final digest = HomeDigest(
+        upcoming: [
+          _item('Quiz 1', daysFromNow: -3),
+          _item('Quiz 2', daysFromNow: 2),
+        ],
+      );
       expect(digest.futureItems.map((item) => item.title), ['Quiz 2']);
     });
 
     test('keeps undated items but sorts them last', () {
-      final digest = HomeDigest(upcoming: [
-        _item('No date given'),
-        _item('Quiz soon', daysFromNow: 1),
-      ]);
-      expect(
-        digest.futureItems.map((item) => item.title),
-        ['Quiz soon', 'No date given'],
+      final digest = HomeDigest(
+        upcoming: [_item('No date given'), _item('Quiz soon', daysFromNow: 1)],
       );
+      expect(digest.futureItems.map((item) => item.title), [
+        'Quiz soon',
+        'No date given',
+      ]);
     });
 
     test('quizzesThisWeek counts quizzes within seven days only', () {
-      final digest = HomeDigest(upcoming: [
-        _item('Quiz tomorrow', daysFromNow: 1),
-        _item('Quiz in a fortnight', daysFromNow: 14),
-        _item('Lab report', daysFromNow: 2),
-        _item('Quiz that passed', daysFromNow: -1),
-        _item('Quiz with no date'),
-      ]);
+      final digest = HomeDigest(
+        upcoming: [
+          _item('Quiz tomorrow', daysFromNow: 1),
+          _item('Quiz in a fortnight', daysFromNow: 14),
+          _item('Lab report', daysFromNow: 2),
+          _item('Quiz that passed', daysFromNow: -1),
+          _item('Quiz with no date'),
+        ],
+      );
       expect(digest.quizzesThisWeek, 1);
     });
   });

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/class_slot.dart';
 import '../../data/timetable_dao.dart';
@@ -101,6 +103,21 @@ class _TimetableScreenState extends State<TimetableScreen>
     if (saved) await _load(reschedule: true);
   }
 
+  Future<void> _import() async {
+    final imported = await context.push<int>(AppRoutes.timetableImport);
+    if (!mounted || imported == null) return;
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Imported $imported class${imported == 1 ? '' : 'es'}. '
+          'Reminders are set.',
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleReminders(bool on) async {
     setState(() => _remindersOn = on);
     await _reminders.setEnabled(on);
@@ -125,6 +142,20 @@ class _TimetableScreenState extends State<TimetableScreen>
             fontWeight: FontWeight.w800,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: TextButton.icon(
+              onPressed: _import,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+              label: const Text('Import'),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: _isLoading
           ? null
@@ -159,6 +190,12 @@ class _TimetableScreenState extends State<TimetableScreen>
                   onAllowNotifications: () =>
                       _allowNotifications(fromTap: true),
                 ),
+                // Typing a week in by hand is the slow way; offer the quick
+                // one first while the timetable is empty.
+                if (_slots.isEmpty) ...[
+                  const SizedBox(height: 14),
+                  _ImportCard(onTap: _import),
+                ],
                 const SizedBox(height: 22),
                 _DayStrip(
                   selected: _day,
@@ -370,6 +407,65 @@ class _RemindersCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// "Import from a screenshot", shown while the timetable is empty.
+class _ImportCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ImportCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.tintLavender,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Import from a screenshot',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.inkLavender,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Your AI reads your timetable and fills in the week.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.35,
+                        color: AppColors.inkLavender,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SvgPicture.asset(
+                'assets/images/timetable_import.svg',
+                width: 72,
+                height: 72,
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.inkLavender,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -593,6 +689,22 @@ class _ClassCard extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
                 child: Row(
                   children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: slot.isLab
+                            ? color
+                            : color.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(
+                        slot.kindIcon,
+                        size: 19,
+                        color: slot.isLab ? AppColors.textOnPrimary : color,
+                      ),
+                    ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

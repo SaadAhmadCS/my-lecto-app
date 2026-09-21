@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/services/notes_parser.dart';
 import '../../recording/data/local/recording_dao.dart';
+import '../../recording/data/local/recording_database.dart';
 import '../../recording/data/local/recording_feed.dart';
 import '../../subjects/data/subject_dao.dart';
 
@@ -18,24 +19,29 @@ enum UpcomingKind {
   final String label;
 
   /// Words that mean a quiz on their own.
-  static const _quizWords = [
-    'quiz', 'exam', 'test', 'midterm', 'viva',
-  ];
+  static const _quizWords = ['quiz', 'exam', 'test', 'midterm', 'viva'];
 
   /// Words that suggest a quiz but often sit next to an assignment word —
   /// "final project" is a project, "final exam" is an exam.
   static const _weakQuizWords = ['final', 'finals', 'paper'];
 
   static const _assignmentWords = [
-    'assignment', 'report', 'problem set', 'essay', 'submission',
-    'homework', 'project', 'presentation', 'lab',
+    'assignment',
+    'report',
+    'problem set',
+    'essay',
+    'submission',
+    'homework',
+    'project',
+    'presentation',
+    'lab',
   ];
 
   /// Whole-word match, so "syllabus" is not a lab and "latest" is not a test.
-  static bool _mentions(String text, List<String> words) =>
-      words.any((word) => RegExp(
-            '(?<![a-z])${RegExp.escape(word)}(?![a-z])',
-          ).hasMatch(text));
+  static bool _mentions(String text, List<String> words) => words.any(
+    (word) =>
+        RegExp('(?<![a-z])${RegExp.escape(word)}(?![a-z])').hasMatch(text),
+  );
 
   static UpcomingKind from(String description) {
     final text = description.toLowerCase();
@@ -54,6 +60,9 @@ class HomeTask {
   final String recordingTitle;
   final String? subjectName;
 
+  /// The subject's colour, as stored: "#5244e3".
+  final String? subjectColor;
+
   /// The nearest deadline from the same lecture, when it had one. Tasks
   /// themselves carry no date — this is the best available signal.
   final DateTime? dueAt;
@@ -68,6 +77,7 @@ class HomeTask {
     required this.recordingId,
     required this.recordingTitle,
     this.subjectName,
+    this.subjectColor,
     this.dueAt,
     this.lineIndex,
   });
@@ -76,9 +86,7 @@ class HomeTask {
     final due = dueAt;
     if (due == null) return false;
     final now = DateTime.now();
-    return due.year == now.year &&
-        due.month == now.month &&
-        due.day == now.day;
+    return due.year == now.year && due.month == now.month && due.day == now.day;
   }
 }
 
@@ -92,6 +100,9 @@ class UpcomingItem {
   final String recordingTitle;
   final String? subjectName;
 
+  /// The subject's colour, as stored: "#5244e3".
+  final String? subjectColor;
+
   const UpcomingItem({
     required this.title,
     required this.rawDate,
@@ -100,6 +111,7 @@ class UpcomingItem {
     required this.recordingTitle,
     this.date,
     this.subjectName,
+    this.subjectColor,
   });
 
   /// Whole days from today. Negative once it has passed.
@@ -148,21 +160,22 @@ class HomeDigest {
 
   /// Still to come, soonest first.
   List<UpcomingItem> get futureItems {
-    final future = upcoming.where((item) {
-      final days = item.daysAway;
-      return days == null || days >= 0;
-    }).toList()
-      ..sort((a, b) => (a.daysAway ?? 9999).compareTo(b.daysAway ?? 9999));
+    final future =
+        upcoming.where((item) {
+            final days = item.daysAway;
+            return days == null || days >= 0;
+          }).toList()
+          ..sort((a, b) => (a.daysAway ?? 9999).compareTo(b.daysAway ?? 9999));
     return future;
   }
 
   int get quizzesThisWeek => upcoming.where((item) {
-        final days = item.daysAway;
-        return item.kind == UpcomingKind.quiz &&
-            days != null &&
-            days >= 0 &&
-            days <= 7;
-      }).length;
+    final days = item.daysAway;
+    return item.kind == UpcomingKind.quiz &&
+        days != null &&
+        days >= 0 &&
+        days <= 7;
+  }).length;
 }
 
 /// Builds the dashboard's data out of the notes already on the device.
@@ -178,9 +191,9 @@ class HomeDigestBuilder {
     required RecordingDao dao,
     required RecordingFeed feed,
     required SubjectDao subjects,
-  })  : _dao = dao,
-        _feed = feed,
-        _subjects = subjects;
+  }) : _dao = dao,
+       _feed = feed,
+       _subjects = subjects;
 
   Future<HomeDigest> build() async {
     try {
@@ -198,41 +211,51 @@ class HomeDigestBuilder {
 
         final parsed = NotesParser.parse(notes.notesMarkdown);
         final title = recording['title'] as String? ?? 'Recording';
-        final subject =
-            (recording['subject'] as Map<String, dynamic>?)?['name'] as String?;
+        final subjectMap = recording['subject'] as Map<String, dynamic>?;
+        final subject = subjectMap?['name'] as String?;
+        final subjectColor = subjectMap?['color'] as String?;
 
         // A lecture's own deadlines are the only date signal its tasks have.
         final nearest = _nearestDate(parsed.deadlines);
 
         for (final task in parsed.tasks) {
-          tasks.add(HomeTask(
-            text: task.text,
-            done: task.done,
-            recordingId: id,
-            recordingTitle: title,
-            subjectName: subject,
-            dueAt: task.done ? null : nearest,
-            lineIndex: task.lineIndex,
-          ));
+          tasks.add(
+            HomeTask(
+              text: task.text,
+              done: task.done,
+              recordingId: id,
+              recordingTitle: title,
+              subjectName: subject,
+              subjectColor: subjectColor,
+              dueAt: task.done ? null : nearest,
+              lineIndex: task.lineIndex,
+            ),
+          );
         }
 
         for (final deadline in parsed.deadlines) {
-          upcoming.add(UpcomingItem(
-            title: deadline.description,
-            date: deadline.date,
-            rawDate: deadline.rawDate,
-            kind: UpcomingKind.from(deadline.description),
-            recordingId: id,
-            recordingTitle: title,
-            subjectName: subject,
-          ));
+          upcoming.add(
+            UpcomingItem(
+              title: deadline.description,
+              date: deadline.date,
+              rawDate: deadline.rawDate,
+              kind: UpcomingKind.from(deadline.description),
+              recordingId: id,
+              recordingTitle: title,
+              subjectName: subject,
+              subjectColor: subjectColor,
+            ),
+          );
         }
       }
 
       return HomeDigest(
         tasks: tasks,
         upcoming: upcoming,
-        subjectCount: subjects.length,
+        // Unsorted is a holding folder, not a course.
+        subjectCount: subjects
+            .where((s) => s['id'] != RecordingDatabase.unsortedSubjectId)
+            .length,
         recordingCount: recordings.length,
         awaitingCount: awaiting,
         streakDays: _streak(recordings),
@@ -273,11 +296,12 @@ class HomeDigestBuilder {
   }
 
   static DateTime? _nearestDate(List<NoteDeadline> deadlines) {
-    final dates = deadlines
-        .map((deadline) => deadline.date)
-        .whereType<DateTime>()
-        .toList()
-      ..sort();
+    final dates =
+        deadlines
+            .map((deadline) => deadline.date)
+            .whereType<DateTime>()
+            .toList()
+          ..sort();
     return dates.isEmpty ? null : dates.first;
   }
 
@@ -288,7 +312,9 @@ class HomeDigestBuilder {
   static int _streak(List<Map<String, dynamic>> recordings) {
     final days = <DateTime>{};
     for (final recording in recordings) {
-      final created = DateTime.tryParse(recording['createdAt'] as String? ?? '');
+      final created = DateTime.tryParse(
+        recording['createdAt'] as String? ?? '',
+      );
       if (created != null) {
         days.add(DateTime(created.year, created.month, created.day));
       }

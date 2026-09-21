@@ -334,7 +334,9 @@ class _SubjectOption extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
-          Icons.folder_rounded,
+          // A class on now shows its kind — flask for a lab, book for a
+          // lecture — so the two are told apart at a glance.
+          klass?.kindIcon ?? Icons.folder_rounded,
           size: 20,
           color: selected ? AppColors.textOnPrimary : color,
         ),

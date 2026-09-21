@@ -50,8 +50,8 @@ class _CreateSubjectSheetState extends State<_CreateSubjectSheet> {
     if (name.isEmpty || _isSaving) return;
     setState(() => _isSaving = true);
 
-    final colorHex = '#${AppColors.subjectColors[_colorIndex].toARGB32()
-        .toRadixString(16).substring(2)}';
+    final colorHex =
+        '#${AppColors.subjectColors[_colorIndex].toARGB32().toRadixString(16).substring(2)}';
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -98,9 +98,9 @@ class _CreateSubjectSheetState extends State<_CreateSubjectSheet> {
           const SizedBox(height: AppSpacing.xl),
           Text(
             'New Subject',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: AppSpacing.xl),
           TextField(
@@ -116,9 +116,9 @@ class _CreateSubjectSheetState extends State<_CreateSubjectSheet> {
           const SizedBox(height: AppSpacing.xl),
           Text(
             'Color',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.sm),
           Wrap(

@@ -50,11 +50,7 @@ class HomeActionCard extends StatelessWidget {
               Positioned(
                 right: 6,
                 bottom: 4,
-                child: SvgPicture.asset(
-                  illustration,
-                  width: 72,
-                  height: 72,
-                ),
+                child: SvgPicture.asset(illustration, width: 72, height: 72),
               ),
               Padding(
                 padding: const EdgeInsets.all(14),
@@ -66,10 +62,10 @@ class HomeActionCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: foreground,
-                            fontWeight: FontWeight.w900,
-                            height: 1.2,
-                          ),
+                        color: foreground,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -77,9 +73,9 @@ class HomeActionCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: foreground.withValues(alpha: 0.75),
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: foreground.withValues(alpha: 0.75),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),

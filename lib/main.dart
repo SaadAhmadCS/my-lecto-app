@@ -23,6 +23,7 @@ import 'features/recording/presentation/widgets/recording_mini_bar.dart';
 import 'features/subjects/data/subject_dao.dart';
 import 'features/timetable/data/timetable_dao.dart';
 import 'features/timetable/services/class_reminder_service.dart';
+import 'shared/widgets/launch_intro.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,14 +49,17 @@ void main() async {
   void handleTap(String payload) => _handleNotificationTap(router, payload);
   notifications.onTapped = handleTap;
 
-  runApp(MyLectoApp(router: router));
+  // Opened by tapping a notification: that tap is a request — "record my
+  // class" — so skip the intro rather than make it wait.
+  final launchPayload = await notifications.launchPayload();
+
+  runApp(MyLectoApp(router: router, showIntro: launchPayload == null));
 
   unawaited(_recoverInterruptedRecordings());
   // Reminders are rebuilt at every launch, so they track the timetable
   // and the time zone even if something cleared them.
   unawaited(sl<ClassReminderService>().reschedule());
 
-  final launchPayload = await notifications.launchPayload();
   if (launchPayload != null) {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => handleTap(launchPayload),
@@ -126,7 +130,10 @@ Future<void> _recoverInterruptedRecordings() async {
 class MyLectoApp extends StatelessWidget {
   final GoRouter router;
 
-  const MyLectoApp({super.key, required this.router});
+  /// Play the launch intro over the first screen.
+  final bool showIntro;
+
+  const MyLectoApp({super.key, required this.router, this.showIntro = true});
 
   @override
   Widget build(BuildContext context) {
@@ -173,6 +180,7 @@ class MyLectoApp extends StatelessWidget {
             children: [
               if (child != null) Positioned.fill(child: child),
               RecordingMiniBar(router: router),
+              if (showIntro) const Positioned.fill(child: LaunchIntro()),
             ],
           ),
         ),
