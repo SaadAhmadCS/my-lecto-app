@@ -1,10 +1,12 @@
 # Regenerate: dart run flutter_launcher_icons
-# Placeholder artwork (the sign-in screen's book mark) until a Lecto logo
-# exists; replace the PNGs in assets/branding/ and rerun.
+#
+# The mascot from the design set. The adaptive foreground is the circular
+# avatar and the background is the same coral it sits on, so Android's mask
+# never reveals a seam whatever shape the launcher uses.
 flutter_launcher_icons:
   android: "ic_launcher"
-  ios: false # no iOS project yet
+  ios: false # no iOS project
   image_path: "assets/branding/app_icon.png"
-  adaptive_icon_background: "#6366F1"
+  adaptive_icon_background: "#F16743"
   adaptive_icon_foreground: "assets/branding/app_icon_foreground.png"
-  min_sdk_android: 21
+  min_sdk_android: 24

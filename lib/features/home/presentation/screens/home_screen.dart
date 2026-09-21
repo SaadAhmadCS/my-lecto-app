@@ -1,17 +1,17 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/services/notes_parser.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
+import '../../../subjects/data/subject_dao.dart';
+import '../widgets/home_action_card.dart';
+import '../widgets/home_task_row.dart';
 
-/// Home screen — the main landing tab.
-///
-/// Shows a hero section, quick stats, and recent recordings
-/// with their processing status.
+/// The dashboard: what needs doing, and the four ways in.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -21,627 +21,372 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final RecordingFeed _feed = context.read<RecordingFeed>();
-  List<Map<String, dynamic>> _recentRecordings = [];
-  int _totalRecordings = 0;
-  bool _isLoading = true;
-  bool _hasError = false;
+  late final RecordingDao _dao = context.read<RecordingDao>();
+  late final SubjectDao _subjectDao = context.read<SubjectDao>();
 
-  /// Recordings that still need to be sent to your AI app.
+  List<_DueTask> _tasks = const [];
+  int _subjectCount = 0;
+  int _recordingCount = 0;
   int _awaitingCount = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadDashboard();
+    _load();
   }
 
-  Future<void> _loadDashboard() async {
+  Future<void> _load() async {
     try {
-      final recent = await _feed.list(limit: 5);
-      final total = await _feed.total();
+      final subjects = await _subjectDao.listSubjects();
+      final recordings = await _feed.list();
       final awaiting = await _feed.awaitingCount();
+      final tasks = await _collectTasks(recordings);
 
       if (!mounted) return;
       setState(() {
-        _recentRecordings = recent;
-        _totalRecordings = total;
+        _subjectCount = subjects.length;
+        _recordingCount = recordings.length;
         _awaitingCount = awaiting;
+        _tasks = tasks;
         _isLoading = false;
-        _hasError = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
+      setState(() => _isLoading = false);
     }
   }
+
+  /// Pull the checklist items out of every recording's notes.
+  ///
+  /// Tasks are not stored separately — they live inside the markdown the AI
+  /// returned, so they are parsed back out on demand.
+  Future<List<_DueTask>> _collectTasks(
+    List<Map<String, dynamic>> recordings,
+  ) async {
+    final collected = <_DueTask>[];
+
+    for (final recording in recordings) {
+      final id = recording['id'] as String;
+      final notes = await _dao.getNotes(id);
+      if (notes == null) continue;
+
+      final parsed = NotesParser.parse(notes.notesMarkdown);
+      final subject = recording['subject'] as Map<String, dynamic>?;
+
+      for (final task in parsed.tasks) {
+        collected.add(_DueTask(
+          text: task.text,
+          done: task.done,
+          recordingId: id,
+          recordingTitle: recording['title'] as String? ?? 'Recording',
+          subjectName: subject?['name'] as String?,
+        ));
+      }
+    }
+
+    // Unfinished work first — that is what the screen is for.
+    collected.sort((a, b) {
+      if (a.done == b.done) return 0;
+      return a.done ? 1 : -1;
+    });
+    return collected;
+  }
+
+  int get _openTaskCount => _tasks.where((t) => !t.done).length;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.accent],
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.mic_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: _load,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.base,
+              AppSpacing.lg,
+              AppSpacing.huge * 2,
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              'My Lecto',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-      ),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: _loadDashboard,
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.base),
-          children: [
-            _buildHeroCard(context),
-            const SizedBox(height: AppSpacing.xl),
-
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.only(top: AppSpacing.huge),
-                child: Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                ),
-              )
-            else if (_hasError)
-              _buildOfflineHint()
-            else if (_recentRecordings.isEmpty)
-              _buildEmptyHint()
-            else ...[
-              if (_awaitingCount > 0) ...[
-                _buildAwaitingCard(context),
-                const SizedBox(height: AppSpacing.xl),
-              ],
-              _buildStatsRow(context),
-              const SizedBox(height: AppSpacing.xl),
-              _buildSectionHeader(context, 'Recent Recordings'),
-              const SizedBox(height: AppSpacing.sm),
-              ..._recentRecordings.map(
-                (r) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: _RecentRecordingTile(
-                    recording: r,
-                    onTap: () {
-                      final id = r['id'] as String;
-                      final title = r['title'] as String? ?? 'Recording';
-                      context.push(
-                        '/recording/$id?title=${Uri.encodeComponent(title)}',
-                      );
-                    },
-                  ),
-                ),
-              ),
-              if (_totalRecordings > 5) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Center(
-                  child: TextButton(
-                    onPressed: () => context.go('/transcripts'),
-                    child: Text(
-                      'View all $_totalRecordings recordings →',
-                      style: TextStyle(color: AppColors.primary),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Nudge for recordings sitting on this device with no notes yet.
-  ///
-  /// Nothing else will surface them — no upload, no processing, no
-  /// notification — so without this they quietly pile up unnoticed.
-  Widget _buildAwaitingCard(BuildContext context) {
-    final label = _awaitingCount == 1
-        ? '1 recording needs your AI'
-        : '$_awaitingCount recordings need your AI';
-
-    return InkWell(
-      onTap: () => context.go('/transcripts'),
-      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.base),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.35),
-          ),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.auto_awesome_rounded,
-              color: AppColors.primary,
-              size: 22,
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Share the audio to your AI app, then paste the reply back',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondaryDark,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textTertiaryDark,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeroCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primaryDeep,
-            Color(0xFF1E1B3A),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: AppColors.accent,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Notes from your own AI',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Record → Share → Paste',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondaryDark,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildGreeting(context),
+              const SizedBox(height: AppSpacing.lg),
+              _buildActionGrid(context),
+              if (_awaitingCount > 0) ...[
+                const SizedBox(height: AppSpacing.base),
+                _buildAwaitingPill(context),
+              ],
+              const SizedBox(height: AppSpacing.xl),
+              _buildTasks(context),
             ],
           ),
-          const SizedBox(height: AppSpacing.base),
-          // Nothing happens on its own, so the three steps are spelled out.
-          // Promising automatic notes would leave a new user waiting for
-          // something that never arrives.
-          const _HeroStep(
-            number: '1',
-            text: 'Tap the mic to record your lecture.',
-          ),
-          const _HeroStep(
-            number: '2',
-            text: 'Open it and share the audio to Claude, Gemini or Grok.',
-          ),
-          const _HeroStep(
-            number: '3',
-            text: 'Copy their reply and paste it back — it becomes your notes.',
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Everything stays on this phone. Nothing is uploaded.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textTertiaryDark,
-                  fontStyle: FontStyle.italic,
-                ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatsRow(BuildContext context) {
-    final completedCount = _recentRecordings
-        .where((r) => r['processingStatus'] == 'completed')
-        .length;
-    final processingCount = _recentRecordings
-        .where((r) {
-          final s = r['processingStatus'] as String? ?? '';
-          return s == 'transcribing' || s == 'summarizing' || s == 'assembling';
-        })
-        .length;
+  Widget _buildGreeting(BuildContext context) {
+    final now = DateTime.now();
+    final open = _openTaskCount;
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _StatCard(
-            label: 'Total',
-            value: '$_totalRecordings',
-            icon: Icons.mic_rounded,
-            color: AppColors.primary,
-          ),
+        Text(
+          _formatDate(now).toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+              ),
         ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _StatCard(
-            label: 'Ready',
-            value: '$completedCount',
-            icon: Icons.check_circle_outline_rounded,
-            color: AppColors.success,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _StatCard(
-            label: 'Processing',
-            value: '$processingCount',
-            icon: Icons.autorenew_rounded,
-            color: AppColors.info,
+        const SizedBox(height: AppSpacing.sm),
+        // The headline states the one thing worth knowing on opening the app.
+        RichText(
+          text: TextSpan(
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                ),
+            children: _isLoading
+                ? const [TextSpan(text: 'Getting things ready…')]
+                : open > 0
+                    ? [
+                        TextSpan(
+                          text: '$open thing${open == 1 ? '' : 's'} ',
+                          style: const TextStyle(color: AppColors.primary),
+                        ),
+                        const TextSpan(text: 'to do.'),
+                      ]
+                    : _recordingCount == 0
+                        ? [const TextSpan(text: 'Record your first lecture.')]
+                        : [const TextSpan(text: 'Nothing due. Nice.')],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    return Text(
-      title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-    );
-  }
-
-  Widget _buildEmptyHint() {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.xxxl),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(
-              Icons.mic_none_rounded,
-              size: 56,
-              color: AppColors.textTertiaryDark,
-            ),
-            const SizedBox(height: AppSpacing.base),
-            Text(
-              'No recordings yet',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.textSecondaryDark,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Tap the mic button to start',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiaryDark,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOfflineHint() {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.xxxl),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 48,
-              color: AppColors.textTertiaryDark,
-            ),
-            const SizedBox(height: AppSpacing.base),
-            Text(
-              'Offline Mode',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.textSecondaryDark,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'You can still record — data will sync later.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiaryDark,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            OutlinedButton.icon(
-              onPressed: () {
-                setState(() {
-                  _isLoading = true;
-                  _hasError = false;
-                });
-                _loadDashboard();
-              },
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Stat Card ─────────────────────────────────────────────────────
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.darkSurface,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: AppColors.darkBorder),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-          ),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.textTertiaryDark,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Recent Recording Tile ─────────────────────────────────────────
-
-class _RecentRecordingTile extends StatelessWidget {
-  final Map<String, dynamic> recording;
-  final VoidCallback onTap;
-
-  const _RecentRecordingTile({
-    required this.recording,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final title = recording['title'] as String? ?? 'Untitled';
-    final status = recording['processingStatus'] as String? ?? 'pending';
-    final createdAt = recording['createdAt'] as String?;
-    final subject = recording['subject'] as Map<String, dynamic>?;
-    final subjectName = subject?['name'] as String?;
-
-    return Material(
-      color: AppColors.darkSurface,
-      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.base,
-            vertical: AppSpacing.md,
-          ),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.darkBorder),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-          ),
-          child: Row(
+  Widget _buildActionGrid(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
             children: [
-              // Status icon
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _statusColor(status).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  _statusIcon(status),
-                  color: _statusColor(status),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        if (subjectName != null) subjectName,
-                        if (createdAt != null) _timeAgo(createdAt),
-                      ].join(' · '),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textTertiaryDark,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Arrow
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textTertiaryDark,
+              HomeActionCard(
+                title: 'Record',
+                subtitle: 'Tap to record',
+                icon: Icons.mic_rounded,
+                background: AppColors.primary,
+                foreground: AppColors.textOnPrimary,
+                tall: true,
+                onTap: () => context.push('/record'),
               ),
             ],
           ),
         ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            children: [
+              HomeActionCard(
+                title: 'Subjects',
+                subtitle: _subjectCount == 1
+                    ? '1 subject'
+                    : '$_subjectCount subjects',
+                icon: Icons.folder_rounded,
+                background: AppColors.tintLavender,
+                foreground: AppColors.inkLavender,
+                onTap: () => context.go('/subjects'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              HomeActionCard(
+                title: 'Lectures',
+                subtitle: _recordingCount == 1
+                    ? '1 recording'
+                    : '$_recordingCount recordings',
+                icon: Icons.graphic_eq_rounded,
+                background: AppColors.tintMint,
+                foreground: AppColors.inkMint,
+                onTap: () => context.go('/transcripts'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Nothing else surfaces recordings with no notes — no upload, no
+  /// processing — so without this they pile up unnoticed.
+  Widget _buildAwaitingPill(BuildContext context) {
+    final label = _awaitingCount == 1
+        ? '1 recording needs your AI'
+        : '$_awaitingCount recordings need your AI';
+
+    return InkWell(
+      onTap: () => context.go('/transcripts'),
+      borderRadius: BorderRadius.circular(100),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.md,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.tintCoral,
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.auto_awesome_rounded,
+                size: 18, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.inkCoral,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                size: 20, color: AppColors.primary),
+          ],
+        ),
       ),
     );
   }
 
-  Color _statusColor(String s) {
-    if (s == 'completed') return AppColors.success;
-    if (s == 'awaiting_paste') return AppColors.primary;
-    if (s.startsWith('failed')) return AppColors.error;
-    if (s == 'transcribing' || s == 'summarizing' || s == 'assembling') {
-      return AppColors.info;
+  Widget _buildTasks(BuildContext context) {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: AppSpacing.xxl),
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
-    return AppColors.warning;
-  }
 
-  IconData _statusIcon(String s) {
-    if (s == 'completed') return Icons.check_circle_rounded;
-    if (s == 'awaiting_paste') return Icons.auto_awesome_rounded;
-    if (s.startsWith('failed')) return Icons.error_outline_rounded;
-    if (s == 'transcribing' || s == 'summarizing' || s == 'assembling') {
-      return Icons.autorenew_rounded;
-    }
-    return Icons.hourglass_empty_rounded;
-  }
+    if (_tasks.isEmpty) return _buildEmptyTasks(context);
 
-  String _timeAgo(String iso) {
-    try {
-      final d = DateTime.parse(iso);
-      final diff = DateTime.now().difference(d);
-      if (diff.inDays > 7) return '${d.day}/${d.month}/${d.year}';
-      if (diff.inDays > 0) return '${diff.inDays}d ago';
-      if (diff.inHours > 0) return '${diff.inHours}h ago';
-      if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
-      return 'Just now';
-    } catch (_) {
-      return '';
-    }
-  }
-}
+    final shown = _tasks.take(5).toList();
 
-/// One numbered step in the "how this works" card on Home.
-class _HeroStep extends StatelessWidget {
-  final String number;
-  final String text;
-
-  const _HeroStep({required this.number, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              number,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'To do',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
+            ),
+            if (_tasks.length > shown.length)
+              Text(
+                '${_tasks.length - shown.length} more',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        ...shown.map(
+          (task) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: HomeTaskRow(
+              text: task.text,
+              done: task.done,
+              context: task.subjectName ?? task.recordingTitle,
+              onTap: () => context.push(
+                '/recording/${task.recordingId}'
+                '?title=${Uri.encodeComponent(task.recordingTitle)}',
+              ),
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiaryDark,
-                    height: 1.45,
-                  ),
-            ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyTasks(BuildContext context) {
+    final hasRecordings = _recordingCount > 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            hasRecordings
+                ? Icons.checklist_rounded
+                : Icons.mic_none_rounded,
+            size: 36,
+            color: AppColors.textMuted,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            hasRecordings ? 'No tasks yet' : 'No lectures yet',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            hasRecordings
+                ? 'Tasks appear here once your AI finds them in a lecture.'
+                : 'Record a lecture, share it to your AI app, then paste the '
+                    'reply back.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.45,
+                ),
           ),
         ],
       ),
     );
   }
+
+  static String _formatDate(DateTime date) {
+    const days = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+      'Friday', 'Saturday', 'Sunday',
+    ];
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${days[date.weekday - 1]} ${date.day} ${months[date.month - 1]}';
+  }
+}
+
+/// A checklist item, with the lecture it came from.
+class _DueTask {
+  final String text;
+  final bool done;
+  final String recordingId;
+  final String recordingTitle;
+  final String? subjectName;
+
+  const _DueTask({
+    required this.text,
+    required this.done,
+    required this.recordingId,
+    required this.recordingTitle,
+    this.subjectName,
+  });
 }

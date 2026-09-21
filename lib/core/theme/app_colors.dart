@@ -1,70 +1,115 @@
 import 'package:flutter/material.dart';
 
-/// Lecto Design System — Color Palette
+/// The app's colours.
 ///
-/// Dark mode is the primary theme. All colors follow
-/// a consistent naming convention with semantic meaning.
+/// A warm, light palette: off-white paper, coral for anything you act on, and
+/// soft tints for the cards. Taken from the design mockups rather than picked
+/// ad hoc, so screens stay consistent as they are rebuilt.
 class AppColors {
   AppColors._();
 
-  // === Brand Colors ===
-  static const Color primary = Color(0xFF6366F1); // Indigo-500
-  static const Color primaryLight = Color(0xFF818CF8); // Indigo-400
-  static const Color primaryDark = Color(0xFF4F46E5); // Indigo-600
-  static const Color primaryDeep = Color(0xFF1E1B4B); // Indigo-950
+  // === Brand ===
+  /// Coral. Used for the record button, links and anything actionable.
+  static const Color primary = Color(0xFFF16743);
+  static const Color primaryLight = Color(0xFFFF7B54);
+  static const Color primaryDark = Color(0xFFD9502C);
 
-  static const Color accent = Color(0xFF06B6D4); // Cyan-500
-  static const Color accentLight = Color(0xFF22D3EE); // Cyan-400
-  static const Color accentDark = Color(0xFF0891B2); // Cyan-600
+  /// Deep brown-red, for text sitting on a coral tint.
+  static const Color primaryInk = Color(0xFF743C28);
 
-  // === Dark Theme Surfaces ===
-  static const Color darkBg = Color(0xFF0F0F14); // Deep dark background
-  static const Color darkSurface = Color(0xFF1A1A24); // Card/surface
-  static const Color darkSurfaceLight = Color(0xFF252536); // Elevated surface
-  static const Color darkBorder = Color(0xFF2E2E42); // Subtle borders
+  // === Surfaces ===
+  /// Page background — warm off-white, not pure white.
+  static const Color background = Color(0xFFFAF7F2);
 
-  // === Light Theme Surfaces ===
-  static const Color lightBg = Color(0xFFF8FAFC); // Slate-50
-  static const Color lightSurface = Color(0xFFFFFFFF); // White
-  static const Color lightSurfaceLight = Color(0xFFF1F5F9); // Slate-100
-  static const Color lightBorder = Color(0xFFE2E8F0); // Slate-200
+  /// Cards and sheets.
+  static const Color surface = Color(0xFFFFFFFF);
 
-  // === Text Colors ===
-  static const Color textPrimaryDark = Color(0xFFF8FAFC); // Slate-50
-  static const Color textSecondaryDark = Color(0xFF94A3B8); // Slate-400
-  static const Color textTertiaryDark = Color(0xFF64748B); // Slate-500
+  /// A slightly recessed surface, for rows inside a card.
+  static const Color surfaceMuted = Color(0xFFF4EEE6);
 
-  static const Color textPrimaryLight = Color(0xFF0F172A); // Slate-900
-  static const Color textSecondaryLight = Color(0xFF475569); // Slate-600
-  static const Color textTertiaryLight = Color(0xFF94A3B8); // Slate-400
+  /// Hairlines and card outlines.
+  static const Color border = Color(0xFFEFE8DE);
+  static const Color borderStrong = Color(0xFFD8D0C5);
 
-  // === Semantic Colors ===
-  static const Color success = Color(0xFF10B981);        // Emerald-500
-  static const Color successBg = Color(0x2010B981);      // 12% opacity
-  static const Color error = Color(0xFFEF4444);          // Red-500
-  static const Color errorBg = Color(0x20EF4444);
-  static const Color warning = Color(0xFFF59E0B);        // Amber-500
-  static const Color warningBg = Color(0x20F59E0B);
-  static const Color info = Color(0xFF3B82F6);           // Blue-500
-  static const Color infoBg = Color(0x203B82F6);
+  /// The floating bottom navigation bar.
+  static const Color navBar = Color(0xFF1E1B18);
+  static const Color navBarMuted = Color(0xFF2C2723);
 
-  // === Recording Colors ===
-  static const Color recordingRed = Color(0xFFFF3B30); // Active recording
-  static const Color recordingPulse = Color(0xFFFF6B6B); // Recording pulse
-  static const Color waveformActive = Color(0xFF6366F1); // Waveform bars
-  static const Color waveformInactive = Color(0xFF2E2E42);
+  // === Text ===
+  static const Color textPrimary = Color(0xFF1C1917);
+  static const Color textSecondary = Color(0xFF7C756D);
+  static const Color textMuted = Color(0xFFA8A29E);
 
-  // === Subject Palette (for folder colors) ===
+  /// Text on a coral or dark background.
+  static const Color textOnPrimary = Color(0xFFFFFFFF);
+
+  // === Card tints ===
+  /// Soft backgrounds for the dashboard cards, paired with [tintInk] text.
+  static const Color tintCoral = Color(0xFFFCEEE8);
+  static const Color tintLavender = Color(0xFFEDE9FE);
+  static const Color tintMint = Color(0xFFD9F2E6);
+  static const Color tintSky = Color(0xFFDCEBFB);
+  static const Color tintYellow = Color(0xFFFFF2CD);
+  static const Color tintPink = Color(0xFFFFEBF0);
+  static const Color tintCream = Color(0xFFFEF4DC);
+
+  /// Readable ink for each tint above.
+  static const Color inkCoral = Color(0xFF743C28);
+  static const Color inkLavender = Color(0xFF5244E3);
+  static const Color inkMint = Color(0xFF128B62);
+  static const Color inkSky = Color(0xFF2E78E6);
+
+  // === Status ===
+  static const Color success = Color(0xFF128B62);
+  static const Color successBg = Color(0xFFD9F2E6);
+  static const Color error = Color(0xFFDC2626);
+  static const Color errorBg = Color(0xFFFDE7E7);
+  static const Color warning = Color(0xFFB45309);
+  static const Color warningBg = Color(0xFFFFF2CD);
+  static const Color info = Color(0xFF2E78E6);
+  static const Color infoBg = Color(0xFFDCEBFB);
+
+  // === Recording ===
+  static const Color recordingRed = Color(0xFFF16743);
+  static const Color recordingPulse = Color(0xFFFF7B54);
+  static const Color waveformActive = Color(0xFFF16743);
+  static const Color waveformInactive = Color(0xFFE2D9CD);
+
+  // === Subject palette ===
+  /// Folder colours, muted to sit on the warm background.
   static const List<Color> subjectColors = [
-    Color(0xFF6366F1), // Indigo
-    Color(0xFF8B5CF6), // Violet
-    Color(0xFFEC4899), // Pink
-    Color(0xFFEF4444), // Red
-    Color(0xFFF97316), // Orange
-    Color(0xFFF59E0B), // Amber
-    Color(0xFF10B981), // Emerald
-    Color(0xFF06B6D4), // Cyan
-    Color(0xFF3B82F6), // Blue
-    Color(0xFF6B7280), // Gray
+    Color(0xFFF16743), // Coral
+    Color(0xFF5244E3), // Indigo
+    Color(0xFF128B62), // Green
+    Color(0xFF2E78E6), // Blue
+    Color(0xFFD946A6), // Pink
+    Color(0xFFB45309), // Amber
+    Color(0xFF7C3AED), // Violet
+    Color(0xFF0E7490), // Teal
+    Color(0xFFDC2626), // Red
+    Color(0xFF7C756D), // Stone
   ];
+
+  // === Migration shims ===
+  // The app was dark-themed and these names are used across screens that have
+  // not been rebuilt yet. They point at the new palette so nothing looks out
+  // of place, and each one disappears as its screen is redone.
+  static const Color accent = primaryLight;
+  static const Color accentLight = primaryLight;
+  static const Color accentDark = primaryDark;
+  static const Color primaryDeep = tintCoral;
+  static const Color darkBg = background;
+  static const Color darkSurface = surface;
+  static const Color darkSurfaceLight = surfaceMuted;
+  static const Color darkBorder = border;
+  static const Color lightBg = background;
+  static const Color lightSurface = surface;
+  static const Color lightSurfaceLight = surfaceMuted;
+  static const Color lightBorder = border;
+  static const Color textPrimaryDark = textPrimary;
+  static const Color textSecondaryDark = textSecondary;
+  static const Color textTertiaryDark = textMuted;
+  static const Color textPrimaryLight = textPrimary;
+  static const Color textSecondaryLight = textSecondary;
+  static const Color textTertiaryLight = textMuted;
 }
