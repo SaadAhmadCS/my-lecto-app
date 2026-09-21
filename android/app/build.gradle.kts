@@ -57,6 +57,14 @@ android {
                 signingConfigs.getByName("debug")
             }
         }
+        debug {
+            // Same key as release, so `flutter run` installs over the real
+            // app instead of forcing an uninstall that wipes the student's
+            // lectures and timetable.
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 }
 
