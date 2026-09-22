@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
@@ -100,8 +101,19 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+        children: const [
+          Skeleton(width: 190, height: 34, radius: 12),
+          SizedBox(height: 10),
+          Skeleton(width: 240, height: 16),
+          SizedBox(height: 22),
+          Skeleton(height: 96, radius: 20),
+          SizedBox(height: 12),
+          Skeleton(height: 96, radius: 20),
+          SizedBox(height: 12),
+          Skeleton(height: 96, radius: 20),
+        ],
       );
     }
 

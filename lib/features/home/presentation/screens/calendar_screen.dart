@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
+import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/page_title.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
@@ -98,8 +99,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: SafeArea(
         bottom: false,
         child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
+            ? ListView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+                children: const [
+                  Skeleton(width: 190, height: 34, radius: 12),
+                  SizedBox(height: 10),
+                  Skeleton(width: 250, height: 16),
+                  SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(child: Skeleton(height: 74, radius: 20)),
+                      SizedBox(width: 12),
+                      Expanded(child: Skeleton(height: 74, radius: 20)),
+                    ],
+                  ),
+                  SizedBox(height: 22),
+                  Skeleton(height: 86, radius: 20),
+                  SizedBox(height: 12),
+                  Skeleton(height: 86, radius: 20),
+                  SizedBox(height: 12),
+                  Skeleton(height: 86, radius: 20),
+                ],
               )
             : RefreshIndicator(
                 color: AppColors.primary,
@@ -236,37 +256,13 @@ class _EmptyCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(21),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          SvgPicture.asset('assets/images/timetable.svg', width: 120),
-          const Text(
-            'Nothing coming up',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Quizzes and deadlines a lecture mentions show up here, week by '
-            'week.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.45,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
+    return const EmptyState(
+      illustration: 'assets/images/timetable.svg',
+      tint: AppColors.tintLavender,
+      title: 'Nothing coming up',
+      body:
+          'Quizzes and deadlines a lecture mentions show up here, week by '
+          'week.',
     );
   }
 }

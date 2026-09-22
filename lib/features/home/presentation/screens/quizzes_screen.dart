@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 import '../../../../shared/widgets/page_title.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
@@ -88,8 +89,17 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
       body: SafeArea(
         bottom: false,
         child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
+            ? ListView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+                children: const [
+                  Skeleton(width: 160, height: 34, radius: 12),
+                  SizedBox(height: 10),
+                  Skeleton(width: 250, height: 16),
+                  SizedBox(height: 22),
+                  Skeleton(height: 176, radius: 24),
+                  SizedBox(height: 12),
+                  Skeleton(height: 72, radius: 20),
+                ],
               )
             : RefreshIndicator(
                 color: AppColors.primary,

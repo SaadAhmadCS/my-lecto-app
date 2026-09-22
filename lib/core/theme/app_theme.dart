@@ -198,5 +198,24 @@ class AppTheme {
       color: AppColors.lightBorder,
       thickness: 1,
     ),
+    // Dark, rounded, and lifted clear of the floating navigation dock, which
+    // messages used to appear behind.
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: AppColors.navBar,
+      contentTextStyle: AppTypography.textTheme.bodyMedium?.copyWith(
+        color: AppColors.textOnPrimary,
+        fontWeight: FontWeight.w600,
+      ),
+      actionTextColor: AppColors.primaryLight,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      behavior: SnackBarBehavior.floating,
+      insetPadding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
+      elevation: 8,
+    ),
+    // The pull-to-refresh spinner in the app's colours, wherever it appears.
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: AppColors.primary,
+      circularTrackColor: Colors.transparent,
+    ),
   );
 }

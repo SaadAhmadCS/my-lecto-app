@@ -113,10 +113,7 @@ class AiShareService {
     final parts = <LecturePart>[];
     var start = Duration.zero;
     for (var i = 0; i < groups.length; i++) {
-      final length = groups[i].fold(
-        Duration.zero,
-        (sum, c) => sum + c.length,
-      );
+      final length = groups[i].fold(Duration.zero, (sum, c) => sum + c.length);
       parts.add(
         LecturePart(
           index: i + 1,

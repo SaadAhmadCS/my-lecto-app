@@ -56,11 +56,11 @@ class PrimaryPillButton extends StatelessWidget {
             ),
             child: InkWell(
               onTap: onPressed == null
-            ? null
-            : () {
-                Feel.tap();
-                onPressed!();
-              },
+                  ? null
+                  : () {
+                      Feel.tap();
+                      onPressed!();
+                    },
               borderRadius: BorderRadius.circular(100),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,

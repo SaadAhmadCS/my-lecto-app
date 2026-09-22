@@ -258,7 +258,7 @@ class _RecordingScreenBody extends StatelessWidget {
             ),
           ),
 
-          const Spacer(flex: 2),
+          const Spacer(),
 
           // Waveform
           Padding(
@@ -269,7 +269,7 @@ class _RecordingScreenBody extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: AppSpacing.lg),
 
           // Timer
           RecordingTimer(
@@ -284,6 +284,30 @@ class _RecordingScreenBody extends StatelessWidget {
           PhotoStrip(photos: state.photos),
 
           if (state.photos.isNotEmpty) const SizedBox(height: AppSpacing.lg),
+
+          // The worry every student has mid-lecture, answered once.
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 14,
+                  color: AppColors.textTertiaryDark,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'Lock the phone or leave the app — it keeps recording',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: AppColors.textTertiaryDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.base),
 
           // Controls
           Padding(
@@ -438,7 +462,7 @@ class _RecordingScreenBody extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
             const Text(
-              'Recording Saved!',
+              'Saved to this subject',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -447,9 +471,14 @@ class _RecordingScreenBody extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              '${state.totalChunks} chunks • '
-              '${state.totalDuration.inMinutes} min • '
-              '${state.totalPhotos} photos',
+              [
+                '${state.totalChunks} '
+                    'part${state.totalChunks == 1 ? '' : 's'}',
+                '${state.totalDuration.inMinutes} min',
+                if (state.totalPhotos > 0)
+                  '${state.totalPhotos} '
+                      'photo${state.totalPhotos == 1 ? '' : 's'}',
+              ].join(' · '),
               style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondaryDark,

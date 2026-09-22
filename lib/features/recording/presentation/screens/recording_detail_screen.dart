@@ -762,8 +762,18 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+      // The lecture's own shape: header, tabs, then its cards.
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        children: const [
+          Skeleton(height: 132, radius: 24),
+          SizedBox(height: 14),
+          Skeleton(height: 46, radius: 100),
+          SizedBox(height: 14),
+          Skeleton(height: 120, radius: 22),
+          SizedBox(height: 14),
+          Skeleton(height: 160, radius: 22),
+        ],
       );
     }
 

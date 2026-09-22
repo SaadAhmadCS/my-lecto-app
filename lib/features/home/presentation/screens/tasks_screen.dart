@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/motion.dart';
+import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/page_title.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
@@ -460,48 +461,34 @@ class _Nothing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (emoji, title, body) = switch (view) {
+    final (art, tint, title, body) = switch (view) {
       _View.assignments => (
-        '📝',
+        'assets/images/home_tasks.svg',
+        AppColors.tintPink,
         'No assignments due',
         'Graded work your lecturers set shows up here, with its due date.',
       ),
       _View.tasks => (
-        '✨',
+        'assets/images/day_off.svg',
+        AppColors.tintMint,
         'No tasks left',
         'Reading and practice from your lectures lands here.',
       ),
       _View.done => (
-        '🌱',
+        'assets/images/home_tasks.svg',
+        AppColors.tintCream,
         'Nothing ticked off yet',
         'Tick something off and it moves here.',
       ),
     };
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 28),
-      child: Column(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 38)),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            body,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: EmptyState(
+        illustration: art,
+        tint: tint,
+        title: title,
+        body: body,
       ),
     );
   }
