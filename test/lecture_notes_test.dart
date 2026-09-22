@@ -3,7 +3,7 @@ import 'package:my_lecto/core/services/ai_share_service.dart';
 import 'package:my_lecto/core/services/notes_parser.dart';
 
 void main() {
-  group('lecture notes', () {
+  group('study guide', () {
     test('keeps markdown topic headings inside the notes', () {
       final notes = NotesParser.parse('''
 ## Summary
@@ -20,9 +20,9 @@ H = -Σ p log2 p, where p is the share of each class.
 ## Key Concepts
 - **Entropy** — impurity of a node.
 ''');
-      expect(notes.lectureNotes, contains('### Decision trees'));
-      expect(notes.lectureNotes, contains('### Entropy'));
-      expect(notes.lectureNotes, contains('H = -Σ p log2 p'));
+      expect(notes.studyGuide, contains('### Decision trees'));
+      expect(notes.studyGuide, contains('### Entropy'));
+      expect(notes.studyGuide, contains('H = -Σ p log2 p'));
       // The topics did not leak out as sections of their own.
       expect(notes.extraSections, isEmpty);
       expect(notes.concepts, hasLength(1));
@@ -46,7 +46,7 @@ It builds the tree recursively.
 Key Concepts
  * Entropy — impurity of a node.
 ''');
-      final body = notes.lectureNotes!;
+      final body = notes.studyGuide!;
       expect(body, contains('### Decision Trees'));
       expect(body, contains('### Entropy'));
       expect(body, contains("### Hunt's Algorithm"));
@@ -63,24 +63,30 @@ Key Concepts
 The output of one stage is the input of the next.
 Each stage filters or reshapes documents.
 ''');
-      expect(notes.lectureNotes, isNot(contains('### The output')));
-      expect(notes.lectureNotes, isNot(contains('### Each stage')));
+      expect(notes.studyGuide, isNot(contains('### The output')));
+      expect(notes.studyGuide, isNot(contains('### Each stage')));
     });
 
-    test('lecture notes alone count as structured notes', () {
+    test('reads the section by its new name', () {
+      final notes = NotesParser.parse(
+        'Study Guide\nTrees\nA tree splits data.',
+      );
+      expect(notes.studyGuide, contains('### Trees'));
+    });
+
+    test('a study guide alone counts as structured notes', () {
       final notes = NotesParser.parse('## Lecture Notes\n### A\nText here.');
       expect(notes.isStructured, isTrue);
     });
   });
 
   group('prompt', () {
-    test('asks for detailed lecture notes sized to the lecture', () {
+    test('asks for a detailed study guide sized to the lecture', () {
       final prompt = AiShareService.buildPrompt(
         title: 'Decision trees',
         duration: const Duration(hours: 2),
-        askForTranscript: false,
       );
-      expect(prompt, contains(AiShareService.lectureNotesHeading));
+      expect(prompt, contains(AiShareService.studyGuideHeading));
       expect(prompt, contains('about 3600 words'));
       expect(prompt, contains('Do not summarise'));
     });
@@ -97,10 +103,10 @@ Each stage filters or reshapes documents.
       expect(prompt, contains('any file name'));
     });
 
-    test('lecture notes come before key concepts', () {
+    test('the study guide comes before key concepts', () {
       final prompt = AiShareService.buildPrompt(title: 'Lecture');
       expect(
-        prompt.indexOf(AiShareService.lectureNotesHeading),
+        prompt.indexOf(AiShareService.studyGuideHeading),
         lessThan(prompt.indexOf(AiShareService.conceptsHeading)),
       );
     });

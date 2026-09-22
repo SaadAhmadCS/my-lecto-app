@@ -93,10 +93,7 @@ Today we look at eigenvalues and eigenvectors in some depth, carefully.
         lectures,
         now: DateTime(2026, 9, 22),
       );
-      expect(
-        ExamPrepService.previousExam(exams, exams.first)?.title,
-        'Quiz 1',
-      );
+      expect(ExamPrepService.previousExam(exams, exams.first)?.title, 'Quiz 1');
     });
 
     test('the pack puts every hint first, with where it came from', () {

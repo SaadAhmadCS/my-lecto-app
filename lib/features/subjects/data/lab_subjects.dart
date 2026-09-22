@@ -16,9 +16,10 @@ class LabSubjects {
   static String labName(String theoryName) => '$theoryName Lab';
 
   /// Whether [name] already says it is a lab ("Physics Lab", "Lab: Physics").
-  static bool soundsLikeLab(String name) =>
-      RegExp(r'\b(lab|laboratory|practical)\b', caseSensitive: false)
-          .hasMatch(name);
+  static bool soundsLikeLab(String name) => RegExp(
+    r'\b(lab|laboratory|practical)\b',
+    caseSensitive: false,
+  ).hasMatch(name);
 
   /// [name] without a trailing "Lab", "(Lab)" or "Laboratory", so an imported
   /// "Computer Architecture Lab" matches the "Computer Architecture" course.
@@ -95,8 +96,7 @@ class LabSubjects {
       where: 'id = ?',
       whereArgs: [subjectId],
     );
-    return (rows.isEmpty ? null : rows.first['lab_of'] as String?) ??
-        subjectId;
+    return (rows.isEmpty ? null : rows.first['lab_of'] as String?) ?? subjectId;
   }
 
   /// Give every course with lab classes its own lab folder, and move those

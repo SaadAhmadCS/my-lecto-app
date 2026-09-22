@@ -320,7 +320,8 @@ class _ClassSlotSheetState extends State<ClassSlotSheet> {
                     _SwitchRow(
                       icon: Icons.science_outlined,
                       title: 'It\'s a lab',
-                      subtitle: 'Its lectures go in the course\'s own lab folder',
+                      subtitle:
+                          'Its lectures go in the course\'s own lab folder',
                       value: _isLab,
                       onChanged: (v) => setState(() => _isLab = v),
                     ),

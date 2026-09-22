@@ -91,7 +91,10 @@ void main() {
       expect(parsed.quizzes.single.title, 'Quiz 2');
       expect(parsed.important, hasLength(1));
       expect(parsed.deadlines, hasLength(1));
-      expect(parsed.hasTranscript, isTrue);
+      expect(parsed.examHints, hasLength(1));
+      expect(parsed.studyGuide, isNotNull);
+      // No transcript is asked for any more.
+      expect(parsed.hasTranscript, isFalse);
     });
   });
 
@@ -133,44 +136,18 @@ void main() {
     });
   });
 
-  group('transcript threshold', () {
-    test('asks for short lectures', () {
-      expect(
-        AiShareService.shouldRequestTranscript(const Duration(minutes: 12)),
-        isTrue,
-      );
-      expect(
-        AiShareService.shouldRequestTranscript(AiShareService.transcriptLimit),
-        isTrue,
-      );
-    });
-
-    test('does not ask once a lecture would overflow a reply', () {
-      expect(
-        AiShareService.shouldRequestTranscript(const Duration(minutes: 31)),
-        isFalse,
-      );
-      expect(
-        AiShareService.shouldRequestTranscript(const Duration(hours: 3)),
-        isFalse,
-      );
-    });
-
-    test('treats an unknown duration as short', () {
-      expect(AiShareService.shouldRequestTranscript(null), isTrue);
-    });
-
-    test('tells a long lecture explicitly not to transcribe', () {
-      // Without this the model transcribes anyway and runs out of room for
-      // the notes, which is the failure this threshold exists to prevent.
-      final prompt = AiShareService.buildPrompt(
-        title: 'L',
-        askForTranscript: false,
-      );
-
+  test('never asks for a transcript, whatever the length', () {
+    // A transcript takes the room the study guide needs.
+    for (final duration in [
+      null,
+      const Duration(minutes: 12),
+      const Duration(hours: 3),
+    ]) {
+      final prompt = AiShareService.buildPrompt(title: 'L', duration: duration);
       expect(prompt, contains('Do NOT include a transcript'));
-      expect(prompt, contains(AiShareService.summaryHeading));
-    });
+      expect(prompt, isNot(contains(AiShareService.transcriptHeading)));
+      expect(prompt, contains(AiShareService.studyGuideHeading));
+    }
   });
 
   test('ChatGPT is not offered as an audio target', () {

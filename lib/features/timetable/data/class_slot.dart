@@ -55,8 +55,7 @@ class ClassSlot {
 
   /// "Linear Algebra", or "Linear Algebra (Lab)" for a lab whose folder name
   /// does not already say so ("Linear Algebra Lab" stays as it is).
-  String get displayName =>
-      isLab && !LabSubjects.soundsLikeLab(subjectName)
+  String get displayName => isLab && !LabSubjects.soundsLikeLab(subjectName)
       ? '$subjectName (Lab)'
       : subjectName;
 

@@ -351,11 +351,14 @@ class _ExamPrepScreenState extends State<ExamPrepScreen> {
                           })
                         : null,
                   ),
-                const SizedBox(height: 16),
-                _TranscriptSwitch(
-                  value: _includeTranscripts,
-                  onChanged: (v) => setState(() => _includeTranscripts = v),
-                ),
+                // Only lectures from before study guides have transcripts.
+                if (chosen.any((l) => l.fullTranscript != null)) ...[
+                  const SizedBox(height: 16),
+                  _TranscriptSwitch(
+                    value: _includeTranscripts,
+                    onChanged: (v) => setState(() => _includeTranscripts = v),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 _PackSummary(
                   lectures: chosen.length,

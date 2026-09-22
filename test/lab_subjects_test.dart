@@ -8,8 +8,10 @@ void main() {
 
   group('names', () {
     test('a lab folder is the course name plus Lab', () {
-      expect(LabSubjects.labName('Computer Architecture'),
-          'Computer Architecture Lab');
+      expect(
+        LabSubjects.labName('Computer Architecture'),
+        'Computer Architecture Lab',
+      );
     });
 
     test('recognises names that are already labs', () {
@@ -22,12 +24,18 @@ void main() {
     });
 
     test('strips the lab suffix to find the course', () {
-      expect(LabSubjects.withoutLab('Computer Architecture Lab'),
-          'Computer Architecture');
-      expect(LabSubjects.withoutLab('Computer Architecture (Lab)'),
-          'Computer Architecture');
-      expect(LabSubjects.withoutLab('Database Systems - Lab'),
-          'Database Systems');
+      expect(
+        LabSubjects.withoutLab('Computer Architecture Lab'),
+        'Computer Architecture',
+      );
+      expect(
+        LabSubjects.withoutLab('Computer Architecture (Lab)'),
+        'Computer Architecture',
+      );
+      expect(
+        LabSubjects.withoutLab('Database Systems - Lab'),
+        'Database Systems',
+      );
       expect(LabSubjects.withoutLab('Lab'), 'Lab');
     });
   });
@@ -108,21 +116,19 @@ void main() {
     Future<Map<String, Object?>> subject(String id) async =>
         (await db.query('subjects', where: 'id = ?', whereArgs: [id])).single;
 
-    Future<String> slotSubject(String id) async => (await db.query(
-          'timetable_slots',
-          where: 'id = ?',
-          whereArgs: [id],
-        ))
-        .single['subject_id'] as String;
+    Future<String> slotSubject(String id) async =>
+        (await db.query(
+              'timetable_slots',
+              where: 'id = ?',
+              whereArgs: [id],
+            )).single['subject_id']
+            as String;
 
     test('each course with labs gets one lab folder', () async {
       final labs = await db.query('subjects', where: 'lab_of IS NOT NULL');
       expect(
         {for (final l in labs) l['lab_of']: l['name']},
-        {
-          'arch': 'Computer Architecture Lab',
-          'ml': 'Machine Learning Lab',
-        },
+        {'arch': 'Computer Architecture Lab', 'ml': 'Machine Learning Lab'},
       );
     });
 
@@ -203,10 +209,7 @@ void main() {
 
     test('a lecture picked from the lab goes to the course', () async {
       final lab = await LabSubjects.labFor(db, 'db');
-      expect(
-        await LabSubjects.subjectForClass(db, lab, isLab: false),
-        'db',
-      );
+      expect(await LabSubjects.subjectForClass(db, lab, isLab: false), 'db');
     });
 
     test('Unsorted never gets a lab', () async {

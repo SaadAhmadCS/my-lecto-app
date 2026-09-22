@@ -354,7 +354,9 @@ class _Hero extends StatelessWidget {
                 ),
                 child: isUnsorted || isLab
                     ? Icon(
-                        isUnsorted ? Icons.inbox_rounded : ClassKindIcon.labIcon,
+                        isUnsorted
+                            ? Icons.inbox_rounded
+                            : ClassKindIcon.labIcon,
                         size: 30,
                         color: AppColors.textOnPrimary,
                       )
@@ -463,10 +465,7 @@ class _ExamPrepButton extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_rounded,
-                color: AppColors.textOnPrimary,
-              ),
+              Icon(Icons.arrow_forward_rounded, color: AppColors.textOnPrimary),
             ],
           ),
         ),

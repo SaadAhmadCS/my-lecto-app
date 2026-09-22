@@ -82,9 +82,9 @@ class ParsedNotes {
   /// they like, the mistakes students make, what to be careful with.
   final List<String> examHints;
 
-  /// The full study notes, topic by topic, as markdown with a `###` heading
-  /// per topic.
-  final String? lectureNotes;
+  /// The study guide: everything taught, topic by topic, as markdown with a
+  /// `###` heading per topic.
+  final String? studyGuide;
   final List<NoteDeadline> deadlines;
   final String? transcript;
 
@@ -101,7 +101,7 @@ class ParsedNotes {
     this.quizzes = const [],
     this.important = const [],
     this.examHints = const [],
-    this.lectureNotes,
+    this.studyGuide,
     this.deadlines = const [],
     this.transcript,
     this.extraSections = const [],
@@ -119,7 +119,7 @@ class ParsedNotes {
       quizzes.isNotEmpty ||
       important.isNotEmpty ||
       examHints.isNotEmpty ||
-      lectureNotes != null ||
+      studyGuide != null ||
       deadlines.isNotEmpty ||
       extraSections.any((section) => section.title.isNotEmpty);
 
@@ -163,7 +163,7 @@ class NotesParser {
     final quizzes = <NoteQuiz>[];
     final important = <String>[];
     final examHints = <String>[];
-    final lectureNoteLines = <String>[];
+    final studyGuideLines = <String>[];
     final deadlines = <NoteDeadline>[];
     final transcriptLines = <String>[];
     final extraSections = <NoteSection>[];
@@ -188,9 +188,9 @@ class NotesParser {
       if (heading != null) {
         // Topic headings inside the lecture notes belong to them. Only a
         // heading naming another section of the reply ends the notes.
-        if (section == _Section.lectureNotes &&
-            !_endsLectureNotes(_normalize(heading))) {
-          lectureNoteLines.add('### ${heading.trim()}');
+        if (section == _Section.studyGuide &&
+            !_endsStudyGuide(_normalize(heading))) {
+          studyGuideLines.add('### ${heading.trim()}');
           continue;
         }
         if (section == _Section.other) flushExtra();
@@ -234,8 +234,8 @@ class NotesParser {
         case _Section.examHints:
           final item = _item(line);
           if (item != null) examHints.add(item);
-        case _Section.lectureNotes:
-          lectureNoteLines.add(line);
+        case _Section.studyGuide:
+          studyGuideLines.add(line);
         case _Section.deadlines:
           if (line.trim().isEmpty) continue;
           final dated = _leadingDate.firstMatch(line);
@@ -288,7 +288,7 @@ class NotesParser {
     }
 
     final transcript = transcriptLines.join('\n').trim();
-    final lectureNotes = _withTopicHeadings(lectureNoteLines).trim();
+    final studyGuide = _withTopicHeadings(studyGuideLines).trim();
 
     return ParsedNotes(
       rawMarkdown: markdown,
@@ -299,7 +299,7 @@ class NotesParser {
       quizzes: quizzes,
       important: important,
       examHints: examHints,
-      lectureNotes: lectureNotes.isEmpty ? null : lectureNotes,
+      studyGuide: studyGuide.isEmpty ? null : studyGuide,
       deadlines: deadlines,
       transcript: _isMissingTranscript(transcript) ? null : transcript,
       extraSections: extraSections,
@@ -425,7 +425,7 @@ class NotesParser {
 
   /// The headings of the reply's other sections, which end the lecture
   /// notes. Anything else is a topic inside them.
-  static bool _endsLectureNotes(String name) => const {
+  static bool _endsStudyGuide(String name) => const {
     'summary',
     'important',
     'exam hints',
@@ -581,14 +581,15 @@ class NotesParser {
     if (has('task') || has('action item') || has('to do') || has('todo')) {
       return _Section.tasks;
     }
-    if (has('lecture note') ||
+    if (has('study guide') ||
+        has('lecture note') ||
         has('detailed note') ||
         has('study note') ||
         has('class note') ||
         name == 'notes' ||
         has('in depth') ||
         has('detailed explanation')) {
-      return _Section.lectureNotes;
+      return _Section.studyGuide;
     }
     if (has('concept') ||
         has('glossary') ||
@@ -617,7 +618,7 @@ enum _Section {
   quizzes,
   important,
   examHints,
-  lectureNotes,
+  studyGuide,
   deadlines,
   transcript,
   other,

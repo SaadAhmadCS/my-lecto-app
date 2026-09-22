@@ -26,7 +26,7 @@ import '../widgets/recording_audio_player.dart';
 import '../widgets/structured_notes_view.dart';
 import '../widgets/transcript_search.dart';
 
-/// One recording: its notes, its transcript and its audio.
+/// One recording: its notes, its study guide and its audio.
 ///
 /// Notes arrive by pasting your AI app's reply back in.
 class RecordingDetailScreen extends StatefulWidget {
@@ -59,9 +59,24 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   String? _transcriptContent;
   String? _summaryContent;
 
-  /// Words in the transcript, shown above it.
+  /// The full study guide, on its own tab.
+  String? get _studyGuide => _localNotes?.studyGuide;
+
+  /// What search looks through: the study guide as plain text, or for a
+  /// lecture from before study guides, its transcript.
+  String? get _searchText {
+    final guide = _studyGuide;
+    if (guide != null) {
+      return guide
+          .replaceAll(RegExp(r'^#+\s*', multiLine: true), '')
+          .replaceAll('**', '');
+    }
+    return _transcriptContent;
+  }
+
+  /// Words in what the second tab shows.
   int get _wordCount =>
-      RegExp(r'\S+').allMatches(_transcriptContent ?? '').length;
+      RegExp(r'\S+').allMatches(_studyGuide ?? _transcriptContent ?? '').length;
   bool _isLoading = true;
   String? _error;
   late String _title = widget.title;
@@ -69,7 +84,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   DateTime? _recordedAt;
   Duration? _duration;
 
-  // In-transcript search (ORG-013)
+  // Search within the study guide (ORG-013)
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   TranscriptSearchIndex? _searchIndex;
@@ -147,9 +162,6 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
         isLab: _subject?['isLab'] == true,
         recordingDate: _recordedAt,
         duration: _duration,
-        // A long lecture's transcript will not fit in one reply, and asking
-        // for it costs the notes their detail.
-        askForTranscript: AiShareService.shouldRequestTranscript(_duration),
         // Tells the AI what it is listening to and what to write back in.
         language: await TranscriptionLanguage.load(),
       );
@@ -211,6 +223,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
         _localNotes = parsed;
         _summaryContent = text;
         if (parsed.hasTranscript) _transcriptContent = parsed.transcript;
+        // Built from the old notes; the next search rebuilds it.
+        _searchIndex = null;
         _processingStatus = RecordingFeed.ready;
         _error = null;
       });
@@ -257,10 +271,10 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   }
 
   void _openSearch() {
-    final transcript = _transcriptContent;
-    if (transcript == null) return;
+    final text = _searchText;
+    if (text == null) return;
 
-    final index = _searchIndex ??= TranscriptSearchIndex(transcript);
+    final index = _searchIndex ??= TranscriptSearchIndex(text);
     setState(() {
       _isSearching = true;
       _paragraphKeys = List.generate(
@@ -268,7 +282,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
         (_) => GlobalKey(),
       );
     });
-    _tabController.animateTo(1); // Transcript tab
+    _tabController.animateTo(1); // Study guide tab
   }
 
   void _closeSearch() {
@@ -320,7 +334,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       onSubmitted: (_) => _jumpToMatch(1),
       style: Theme.of(context).textTheme.bodyLarge,
       decoration: const InputDecoration(
-        hintText: 'Search transcript',
+        hintText: 'Search the study guide',
         border: InputBorder.none,
         enabledBorder: InputBorder.none,
         focusedBorder: InputBorder.none,
@@ -569,10 +583,10 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
             ? _buildSearchActions()
             : [
                 if (_processingStatus == RecordingFeed.ready &&
-                    _transcriptContent != null)
+                    _searchText != null)
                   IconButton(
                     icon: const Icon(Icons.search_rounded),
-                    tooltip: 'Search transcript',
+                    tooltip: 'Search the study guide',
                     onPressed: _openSearch,
                   ),
                 if (_processingStatus == RecordingFeed.ready &&
@@ -671,7 +685,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [_buildSummaryView(), _buildTranscriptView()],
+              children: [_buildSummaryView(), _buildStudyGuideView()],
             ),
           ),
         ],
@@ -860,12 +874,11 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
         recordingDate: _recordedAt,
         duration: _duration,
         summaryContent: summary,
-        transcriptContent: _transcriptContent,
       ),
     );
   }
 
-  /// Notes | Transcript, as the same dark pill switch the Tasks tab uses.
+  /// Notes | Study guide, as the same dark pill switch the Tasks tab uses.
   Widget _buildTabs() {
     return Container(
       height: 46,
@@ -888,7 +901,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
         splashBorderRadius: BorderRadius.circular(100),
         tabs: const [
           Tab(text: 'Notes'),
-          Tab(text: 'Transcript'),
+          Tab(text: 'Study guide'),
         ],
       ),
     );
@@ -1042,76 +1055,106 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       notes: parsed,
       markdownStyle: _markdownStyleSheet(context),
       onToggleTask: parsed.tasks.isEmpty ? null : _toggleTask,
+      onOpenStudyGuide: () => _tabController.animateTo(1),
     );
   }
 
-  Widget _buildTranscriptView() {
-    if (_transcriptContent == null || _transcriptContent!.isEmpty) {
-      // Explain rather than dead-end: in own-AI mode a long lecture is asked
-      // for notes only, because its transcript would not fit in one reply.
-      final skippedForLength =
-          true && !AiShareService.shouldRequestTranscript(_duration);
+  Widget _buildStudyGuideView() {
+    final guide = _studyGuide;
+    final transcript = _transcriptContent;
 
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                skippedForLength
-                    ? Icons.speaker_notes_off_rounded
-                    : Icons.description_outlined,
-                size: 40,
-                color: AppColors.textTertiaryDark,
-              ),
-              const SizedBox(height: AppSpacing.base),
-              Text(
-                skippedForLength
-                    ? 'No transcript for long lectures'
-                    : 'Transcript not available',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              if (skippedForLength) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'A lecture this long will not fit in one AI reply, so Lecto '
-                  'asked for fuller notes instead. The audio is still on this '
-                  'device and can be played below.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiaryDark,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ],
+    if (guide == null && (transcript == null || transcript.isEmpty)) {
+      // Notes made before study guides existed, or an AI that skipped it.
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(28, 40, 28, 24),
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: AppColors.tintCoral,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.menu_book_rounded,
+              size: 30,
+              color: AppColors.primary,
+            ),
           ),
-        ),
+          const SizedBox(height: 16),
+          const Text(
+            'No study guide yet',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'These notes were made before study guides. Share the audio to '
+            'your AI again and paste its reply to get everything that was '
+            'taught, topic by topic.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.5,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          PrimaryPillButton(
+            label: _isSharing ? 'Preparing audio…' : 'Share audio to your AI',
+            icon: Icons.ios_share_rounded,
+            onPressed: _isSharing ? null : _shareToAiApp,
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: _pasteNotesFromClipboard,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                shape: const StadiumBorder(),
+              ),
+              icon: const Icon(Icons.content_paste_rounded),
+              label: const Text('Paste the new reply'),
+            ),
+          ),
+        ],
       );
     }
 
+    final topics = guide == null ? 0 : StructuredNotesView.topicCount(guide);
     return Column(
       children: [
-        // Stats bar
-        // Word count and reading time, as a quiet line above the text.
+        // Length, as a quiet line above the text.
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
           child: Row(
             children: [
               const Icon(
-                Icons.text_snippet_outlined,
+                Icons.menu_book_rounded,
                 size: 15,
                 color: AppColors.textMuted,
               ),
               const SizedBox(width: 6),
-              Text(
-                '$_wordCount words · ${(_wordCount / 200).ceil()} min read',
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted,
+              Expanded(
+                child: Text(
+                  [
+                    if (guide == null) 'Transcript',
+                    if (topics > 0) '$topics topics',
+                    '$_wordCount words',
+                    '${(_wordCount / 200).ceil()} min read',
+                  ].join(' · '),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ),
             ],
@@ -1126,9 +1169,11 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                   paragraphKeys: _paragraphKeys,
                 )
               : Markdown(
-                  data: _transcriptContent!,
-                  padding: const EdgeInsets.all(AppSpacing.base),
-                  styleSheet: _markdownStyleSheet(context),
+                  data: guide ?? transcript!,
+                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 32),
+                  styleSheet: StructuredNotesView.studyGuideStyle(
+                    _markdownStyleSheet(context),
+                  ),
                   selectable: true,
                 ),
         ),

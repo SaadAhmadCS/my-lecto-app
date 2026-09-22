@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../core/errors/error_messages.dart';
+import '../../core/services/notes_parser.dart';
 import '../../core/services/pdf_export_service.dart';
 import '../../core/theme/app_colors.dart';
 import 'primary_pill_button.dart';
@@ -14,7 +15,6 @@ class ExportOptionsSheet extends StatefulWidget {
   final DateTime? recordingDate;
   final Duration? duration;
   final String summaryContent;
-  final String? transcriptContent;
 
   const ExportOptionsSheet({
     super.key,
@@ -23,7 +23,6 @@ class ExportOptionsSheet extends StatefulWidget {
     this.recordingDate,
     this.duration,
     required this.summaryContent,
-    this.transcriptContent,
   });
 
   @override
@@ -31,11 +30,11 @@ class ExportOptionsSheet extends StatefulWidget {
 }
 
 class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
-  bool _includeTranscript = false;
+  bool _includeStudyGuide = true;
   bool _isWorking = false;
 
-  bool get _hasTranscript =>
-      widget.transcriptContent != null && widget.transcriptContent!.isNotEmpty;
+  late final bool _hasStudyGuide =
+      NotesParser.parse(widget.summaryContent).studyGuide != null;
 
   String get _filename => PdfExportService.generateFilename(
     subjectName: widget.subjectName,
@@ -51,8 +50,7 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
         recordingDate: widget.recordingDate,
         duration: widget.duration,
         summaryMarkdown: widget.summaryContent,
-        transcriptMarkdown: widget.transcriptContent,
-        includeTranscript: _includeTranscript,
+        includeStudyGuide: _includeStudyGuide,
       );
     } catch (e) {
       _snack(ErrorMessages.from(e, action: 'create the PDF'));
@@ -177,8 +175,8 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _includeTranscript
-                            ? 'Notes, assignments, quizzes + transcript'
+                        _includeStudyGuide && _hasStudyGuide
+                            ? 'Notes, assignments, quizzes + study guide'
                             : 'Notes, assignments, quizzes and dates',
                         style: const TextStyle(
                           fontSize: 12.5,
@@ -194,14 +192,14 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
           const SizedBox(height: 8),
           SwitchListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            value: _includeTranscript && _hasTranscript,
-            onChanged: _hasTranscript
-                ? (v) => setState(() => _includeTranscript = v)
+            value: _includeStudyGuide && _hasStudyGuide,
+            onChanged: _hasStudyGuide
+                ? (v) => setState(() => _includeStudyGuide = v)
                 : null,
             activeThumbColor: AppColors.textOnPrimary,
             activeTrackColor: AppColors.primary,
             title: const Text(
-              'Include the full transcript',
+              'Include the study guide',
               style: TextStyle(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w700,
@@ -209,9 +207,9 @@ class _ExportOptionsSheetState extends State<ExportOptionsSheet> {
               ),
             ),
             subtitle: Text(
-              _hasTranscript
-                  ? 'Added on its own pages at the end'
-                  : 'This lecture has no transcript',
+              _hasStudyGuide
+                  ? 'Everything taught, on its own pages at the end'
+                  : 'This lecture has no study guide yet',
               style: const TextStyle(
                 fontSize: 12.5,
                 color: AppColors.textSecondary,

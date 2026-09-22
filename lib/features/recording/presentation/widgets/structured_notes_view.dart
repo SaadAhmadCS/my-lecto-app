@@ -18,12 +18,42 @@ class StructuredNotesView extends StatelessWidget {
   /// Called with the task that was tapped. The caller rewrites the markdown.
   final ValueChanged<NoteTask>? onToggleTask;
 
+  /// Opens the study guide, which lives on its own tab so these notes stay
+  /// short enough to take in at a glance.
+  final VoidCallback? onOpenStudyGuide;
+
   const StructuredNotesView({
     super.key,
     required this.notes,
     required this.markdownStyle,
     this.onToggleTask,
+    this.onOpenStudyGuide,
   });
+
+  /// The study guide's type: roomy body text and bold topic headings.
+  static MarkdownStyleSheet studyGuideStyle(MarkdownStyleSheet base) =>
+      base.copyWith(
+        p: base.p?.copyWith(fontSize: 15.5, height: 1.65),
+        listBullet: base.listBullet?.copyWith(fontSize: 15.5),
+        h3: const TextStyle(
+          fontSize: 19,
+          height: 1.3,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.3,
+          color: AppColors.textPrimary,
+        ),
+        h3Padding: const EdgeInsets.only(top: 22, bottom: 4),
+      );
+
+  /// "12 min read", at an unhurried 200 words a minute.
+  static String readingTime(String markdown) {
+    final words = markdown.trim().split(RegExp(r'\s+')).length;
+    return '${(words / 200).ceil()} min read';
+  }
+
+  /// Topic headings in the study guide.
+  static int topicCount(String markdown) =>
+      RegExp(r'^###\s', multiLine: true).allMatches(markdown).length;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +90,8 @@ class StructuredNotesView extends StatelessWidget {
               ),
             ),
           ),
+        if (notes.studyGuide != null)
+          _StudyGuideCard(guide: notes.studyGuide!, onOpen: onOpenStudyGuide),
         if (notes.assignments.isNotEmpty)
           _Card(
             tint: AppColors.tintPink,
@@ -124,31 +156,6 @@ class StructuredNotesView extends StatelessWidget {
               ],
             ),
           ),
-        // The body of the notes: everything taught, topic by topic.
-        if (notes.lectureNotes != null)
-          _Card(
-            tint: AppColors.surface,
-            ink: AppColors.inkCoral,
-            icon: Icons.menu_book_rounded,
-            label: 'Lecture notes',
-            trailing: _readingTime(notes.lectureNotes!),
-            bordered: true,
-            child: MarkdownBody(
-              data: notes.lectureNotes!,
-              selectable: true,
-              styleSheet: markdownStyle.copyWith(
-                p: markdownStyle.p?.copyWith(fontSize: 15, height: 1.6),
-                listBullet: markdownStyle.listBullet?.copyWith(fontSize: 15),
-                h3: const TextStyle(
-                  fontSize: 17,
-                  height: 1.3,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                ),
-                h3Padding: const EdgeInsets.only(top: 14, bottom: 2),
-              ),
-            ),
-          ),
         if (notes.concepts.isNotEmpty)
           _Card(
             tint: AppColors.tintLavender,
@@ -205,12 +212,85 @@ class StructuredNotesView extends StatelessWidget {
   }
 
   static const _assignmentInk = Color(0xFF97245C);
+}
 
-  /// "12 min read", at an unhurried 200 words a minute.
-  static String _readingTime(String markdown) {
-    final words = markdown.trim().split(RegExp(r'\s+')).length;
-    final minutes = (words / 200).ceil();
-    return '$minutes min read';
+/// The way into the study guide: how long it is and how many topics.
+class _StudyGuideCard extends StatelessWidget {
+  final String guide;
+  final VoidCallback? onOpen;
+
+  const _StudyGuideCard({required this.guide, this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final topics = StructuredNotesView.topicCount(guide);
+    final details = [
+      if (topics > 0) '$topics topic${topics == 1 ? '' : 's'}',
+      StructuredNotesView.readingTime(guide),
+    ].join(' · ');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Material(
+        color: AppColors.navBar,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          onTap: onOpen,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.menu_book_rounded,
+                    color: AppColors.textOnPrimary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Study guide',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textOnPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Everything taught, in full · $details',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (onOpen != null)
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: AppColors.textOnPrimary,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

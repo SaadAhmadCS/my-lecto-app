@@ -40,6 +40,7 @@ class PdfExportService {
     required String summaryMarkdown,
     String? transcriptMarkdown,
     bool includeTranscript = false,
+    bool includeStudyGuide = true,
   }) async {
     // Noto Sans rather than the PDF's built-in Helvetica, which only knows
     // basic Latin: lecture notes are full of dashes, Greek and maths signs
@@ -74,6 +75,15 @@ class PdfExportService {
           final widgets = notes.isStructured
               ? _structured(notes)
               : _parseMarkdown(summaryMarkdown, _coral);
+
+          final guide = notes.studyGuide;
+          if (includeStudyGuide && guide != null) {
+            widgets
+              ..add(pw.NewPage())
+              ..add(_sectionTitle('Study guide', _coral))
+              ..add(pw.SizedBox(height: 8))
+              ..addAll(_parseMarkdown(guide, _coral));
+          }
 
           if (includeTranscript &&
               transcriptMarkdown != null &&
@@ -201,16 +211,6 @@ class PdfExportService {
             _checkItem(t.text, done: t.done, accent: _mintInk),
         ]),
       );
-    }
-
-    // Long, so laid out straight on the page rather than in one block that
-    // could not break across pages.
-    if (notes.lectureNotes != null) {
-      out
-        ..add(_sectionTitle('Lecture notes', _coral))
-        ..add(pw.SizedBox(height: 6))
-        ..addAll(_parseMarkdown(notes.lectureNotes!, _coral))
-        ..add(pw.SizedBox(height: 14));
     }
 
     if (notes.concepts.isNotEmpty) {

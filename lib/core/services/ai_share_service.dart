@@ -29,27 +29,11 @@ class AiShareService {
   /// Audio files per share, leaving one slot for the prompt.
   static const int maxAudioFilesPerShare = maxFilesPerShare - 1;
 
-  /// Longest lecture we still ask for a transcript of.
-  ///
-  /// Speech runs about 130 words a minute, so 30 minutes is roughly 4,000
-  /// words — comfortably inside the reply length consumer AI apps allow. A
-  /// 3-hour lecture would be ~24,000 words, which they cannot return: the
-  /// model either truncates or spends its whole output budget transcribing
-  /// and returns thin notes. Above this we ask for notes only.
-  static const Duration transcriptLimit = Duration(minutes: 30);
-
-  /// Whether a lecture of [duration] is short enough to transcribe.
-  ///
-  /// An unknown duration is treated as short, since the common case for a
-  /// missing duration is a brief recording.
-  static bool shouldRequestTranscript(Duration? duration) =>
-      duration == null || duration <= transcriptLimit;
-
   /// Marker headings the reply must use so [parseAiReply] can find each part.
   static const String summaryHeading = '## Summary';
   static const String conceptsHeading = '## Key Concepts';
   static const String tasksHeading = '## Tasks';
-  static const String lectureNotesHeading = '## Lecture Notes';
+  static const String studyGuideHeading = '## Study Guide';
   static const String assignmentsHeading = '## Assignments';
   static const String quizzesHeading = '## Quizzes & Exams';
   static const String importantHeading = '## Important';
@@ -69,7 +53,6 @@ class AiShareService {
     bool isLab = false,
     DateTime? recordingDate,
     Duration? duration,
-    bool askForTranscript = true,
     TranscriptionLanguage language = TranscriptionLanguage.auto,
   }) {
     final buffer = StringBuffer()
@@ -169,12 +152,12 @@ class AiShareService {
       )
       ..writeln(
         '- [ ] One line each. Leave every box unticked. Exercises done '
-        'during the class are not tasks — they belong in the lecture notes.',
+        'during the class are not tasks — they belong in the study guide.',
       )
       ..writeln()
-      ..writeln(lectureNotesHeading)
+      ..writeln(studyGuideHeading)
       ..writeln(
-        'The main part of the reply: complete study notes, detailed enough '
+        'The main part of the reply: a complete study guide, detailed enough '
         'that a student who missed the class could learn everything from '
         'them alone. Do not summarise — explain.',
       )
@@ -199,7 +182,7 @@ class AiShareService {
       ..writeln(conceptsHeading)
       ..writeln('- **Term** — what it means, in one line.')
       ..writeln(
-        '- A quick-revision glossary of the terms from the lecture notes, '
+        '- A quick-revision glossary of the terms from the study guide, '
         'using the lecturer\'s own definitions.',
       )
       ..writeln()
@@ -214,28 +197,14 @@ class AiShareService {
         'section with nothing to put in it — never write "None".',
       );
 
-    if (askForTranscript) {
-      buffer
-        ..writeln()
-        ..writeln(transcriptHeading)
-        ..writeln(
-          'The full transcript of the lecture, in paragraphs. If the '
-          'lecture is too long to transcribe in full, write '
-          '"(too long to transcribe)" here instead and keep the sections '
-          'above complete — those matter more.',
-        );
-    } else {
-      // Long lecture: a full transcript would not fit in one reply, and
-      // attempting it costs the notes their detail. Say so explicitly, or the
-      // model transcribes anyway.
-      buffer
-        ..writeln()
-        ..writeln(
-          'Do NOT include a transcript — this lecture is too long for '
-          'one. Spend that space on the Lecture Notes instead: cover every '
-          'topic the lecturer moved through, in full.',
-        );
-    }
+    // No transcript: it would take the space the study guide needs, and a
+    // long lecture's would not fit in one reply anyway.
+    buffer
+      ..writeln()
+      ..writeln(
+        'Do NOT include a transcript. Spend that space on the Study Guide '
+        'instead: cover every topic the lecturer moved through, in full.',
+      );
 
     buffer
       ..writeln()
