@@ -6,11 +6,20 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../data/subject_dao.dart';
 
-/// Ask for a name and colour and create a subject.
+/// Ask for a name, teacher and colour and create a subject.
 ///
 /// Returns the new subject, or null if the sheet was dismissed or saving
 /// failed (a snack bar says why).
-Future<Map<String, dynamic>?> showCreateSubjectSheet(BuildContext context) {
+Future<Map<String, dynamic>?> showCreateSubjectSheet(BuildContext context) =>
+    showSubjectSheet(context);
+
+/// Create a subject, or edit [existing]: name, teacher and colour.
+///
+/// Returns the saved subject, or null if nothing was saved.
+Future<Map<String, dynamic>?> showSubjectSheet(
+  BuildContext context, {
+  Map<String, dynamic>? existing,
+}) {
   final subjectDao = context.read<SubjectDao>();
 
   return showModalBottomSheet<Map<String, dynamic>>(
@@ -21,27 +30,50 @@ Future<Map<String, dynamic>?> showCreateSubjectSheet(BuildContext context) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => _CreateSubjectSheet(subjectDao: subjectDao),
+    builder: (_) =>
+        _CreateSubjectSheet(subjectDao: subjectDao, existing: existing),
   );
 }
 
 class _CreateSubjectSheet extends StatefulWidget {
   final SubjectDao subjectDao;
+  final Map<String, dynamic>? existing;
 
-  const _CreateSubjectSheet({required this.subjectDao});
+  const _CreateSubjectSheet({required this.subjectDao, this.existing});
 
   @override
   State<_CreateSubjectSheet> createState() => _CreateSubjectSheetState();
 }
 
 class _CreateSubjectSheetState extends State<_CreateSubjectSheet> {
-  final _nameController = TextEditingController();
+  late final _nameController = TextEditingController(
+    text: widget.existing?['name'] as String? ?? '',
+  );
+  late final _teacherController = TextEditingController(
+    text: widget.existing?['teacher'] as String? ?? '',
+  );
   int _colorIndex = 0;
   bool _isSaving = false;
+
+  bool get _isEditing => widget.existing != null;
+  bool get _isLab => widget.existing?['isLab'] == true;
+
+  @override
+  void initState() {
+    super.initState();
+    final color = widget.existing?['color'] as String?;
+    if (color != null) {
+      final index = AppColors.subjectColors.indexWhere(
+        (c) => c.toARGB32() == AppColors.fromHex(color).toARGB32(),
+      );
+      if (index != -1) _colorIndex = index;
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _teacherController.dispose();
     super.dispose();
   }
 
@@ -55,17 +87,39 @@ class _CreateSubjectSheetState extends State<_CreateSubjectSheet> {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
+    final teacher = _teacherController.text.trim();
+
     try {
-      final subject = await widget.subjectDao.createSubject(
-        name: name,
-        color: colorHex,
-      );
-      navigator.pop(subject);
+      final existing = widget.existing;
+      if (existing == null) {
+        navigator.pop(
+          await widget.subjectDao.createSubject(
+            name: name,
+            color: colorHex,
+            teacher: teacher,
+          ),
+        );
+      } else {
+        final id = existing['id'] as String;
+        await widget.subjectDao.updateSubject(
+          id,
+          name: name,
+          color: colorHex,
+          // Empty clears it.
+          teacher: teacher,
+        );
+        navigator.pop(await widget.subjectDao.getSubject(id));
+      }
     } catch (e) {
       navigator.pop();
       messenger.showSnackBar(
         SnackBar(
-          content: Text(ErrorMessages.from(e, action: 'create the subject')),
+          content: Text(
+            ErrorMessages.from(
+              e,
+              action: _isEditing ? 'save the subject' : 'create the subject',
+            ),
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -97,7 +151,7 @@ class _CreateSubjectSheetState extends State<_CreateSubjectSheet> {
           ),
           const SizedBox(height: AppSpacing.xl),
           Text(
-            'New Subject',
+            _isEditing ? (_isLab ? 'Edit lab' : 'Edit subject') : 'New subject',
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -105,12 +159,26 @@ class _CreateSubjectSheetState extends State<_CreateSubjectSheet> {
           const SizedBox(height: AppSpacing.xl),
           TextField(
             controller: _nameController,
-            autofocus: true,
+            autofocus: !_isEditing,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(
+              hintText: 'Subject name (e.g. Calculus)',
+              prefixIcon: Icon(
+                _isLab ? Icons.science_outlined : Icons.book_outlined,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _teacherController,
             textCapitalization: TextCapitalization.words,
             onSubmitted: (_) => _create(),
-            decoration: const InputDecoration(
-              hintText: 'Subject name (e.g. Calculus)',
-              prefixIcon: Icon(Icons.book_outlined),
+            decoration: InputDecoration(
+              hintText: _isLab
+                  ? 'Lab teacher (optional)'
+                  : 'Teacher (optional)',
+              prefixIcon: const Icon(Icons.person_outline_rounded),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -154,7 +222,7 @@ class _CreateSubjectSheetState extends State<_CreateSubjectSheet> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _isSaving ? null : _create,
-              child: const Text('Create Subject'),
+              child: Text(_isEditing ? 'Save changes' : 'Create subject'),
             ),
           ),
         ],

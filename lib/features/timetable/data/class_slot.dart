@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../subjects/data/lab_subjects.dart';
+
 /// One weekly class: a subject on a weekday between two times.
 class ClassSlot {
   final String id;
@@ -51,8 +53,12 @@ class ClassSlot {
 
   Duration get length => Duration(minutes: endMinute - startMinute);
 
-  /// "Linear Algebra" or "Linear Algebra (Lab)".
-  String get displayName => isLab ? '$subjectName (Lab)' : subjectName;
+  /// "Linear Algebra", or "Linear Algebra (Lab)" for a lab whose folder name
+  /// does not already say so ("Linear Algebra Lab" stays as it is).
+  String get displayName =>
+      isLab && !LabSubjects.soundsLikeLab(subjectName)
+      ? '$subjectName (Lab)'
+      : subjectName;
 
   Color get color {
     try {

@@ -143,6 +143,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       final prompt = AiShareService.buildPrompt(
         title: _title,
         subjectName: _subject?['name'] as String?,
+        teacher: _subject?['teacher'] as String?,
+        isLab: _subject?['isLab'] == true,
         recordingDate: _recordedAt,
         duration: _duration,
         // A long lecture's transcript will not fit in one reply, and asking

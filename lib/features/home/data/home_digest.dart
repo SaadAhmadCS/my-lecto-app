@@ -323,7 +323,12 @@ class HomeDigestBuilder {
         upcoming: upcoming,
         // Unsorted is a holding folder, not a course.
         subjectCount: subjects
-            .where((s) => s['id'] != RecordingDatabase.unsortedSubjectId)
+            // A lab is part of its course, not another course.
+            .where(
+              (s) =>
+                  s['id'] != RecordingDatabase.unsortedSubjectId &&
+                  s['isLab'] != true,
+            )
             .length,
         recordingCount: recordings.length,
         awaitingCount: awaiting,

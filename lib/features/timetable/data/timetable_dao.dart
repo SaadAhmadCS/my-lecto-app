@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 import '../../recording/data/local/recording_database.dart';
+import '../../subjects/data/lab_subjects.dart';
 import '../services/timetable_import.dart';
 import 'class_slot.dart';
 
@@ -39,6 +40,8 @@ class TimetableDao {
   }
 
   /// Add the same class on each of [weekdays].
+  ///
+  /// A lab goes into the course's lab folder, whichever half was picked.
   Future<void> add({
     required String subjectId,
     required Iterable<int> weekdays,
@@ -51,10 +54,15 @@ class TimetableDao {
     final db = await RecordingDatabase.database;
     final now = DateTime.now().toIso8601String();
     await db.transaction((txn) async {
+      final subject = await LabSubjects.subjectForClass(
+        txn,
+        subjectId,
+        isLab: isLab,
+      );
       for (final weekday in weekdays) {
         await txn.insert('timetable_slots', {
           'id': _uuid.v4(),
-          'subject_id': subjectId,
+          'subject_id': subject,
           'weekday': weekday,
           'start_minute': startMinute,
           'end_minute': endMinute,
@@ -78,10 +86,15 @@ class TimetableDao {
     required bool remind,
   }) async {
     final db = await RecordingDatabase.database;
+    final subject = await LabSubjects.subjectForClass(
+      db,
+      subjectId,
+      isLab: isLab,
+    );
     await db.update(
       'timetable_slots',
       {
-        'subject_id': subjectId,
+        'subject_id': subject,
         'weekday': weekday,
         'start_minute': startMinute,
         'end_minute': endMinute,
@@ -148,28 +161,36 @@ class TimetableDao {
 
       var created = 0;
       for (final c in classes) {
-        var subjectId = _match(known, c.subject);
+        // "Computer Architecture Lab" is the lab of "Computer Architecture".
+        final isLab = c.isLab || LabSubjects.soundsLikeLab(c.subject);
+        final name = isLab ? LabSubjects.withoutLab(c.subject) : c.subject;
+        var subjectId = _match(known, name);
         if (subjectId == null) {
           subjectId = _uuid.v4();
           await txn.insert('subjects', {
             'id': subjectId,
-            'name': c.subject,
+            'name': name,
             'color': colors[created % colors.length],
             'created_at': now,
             'updated_at': now,
           });
-          known.add((c.subject, subjectId));
+          known.add((name, subjectId));
           created++;
         }
+        final filedUnder = await LabSubjects.subjectForClass(
+          txn,
+          subjectId,
+          isLab: isLab,
+        );
 
         await txn.insert('timetable_slots', {
           'id': _uuid.v4(),
-          'subject_id': subjectId,
+          'subject_id': filedUnder,
           'weekday': c.weekday,
           'start_minute': c.startMinute,
           'end_minute': c.endMinute,
           'room': _clean(c.room),
-          'is_lab': c.isLab ? 1 : 0,
+          'is_lab': isLab ? 1 : 0,
           'remind': 1,
           'created_at': now,
         });

@@ -103,163 +103,17 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     if (created != null) _loadSubjects();
   }
 
-  void _showEditDialog(Map<String, dynamic> subject) {
-    final id = subject['id'] as String;
-    final currentName = subject['name'] as String? ?? '';
-    final colorStr = subject['color'] as String? ?? '#6366F1';
+  Future<void> _showEditDialog(Map<String, dynamic> subject) async {
+    final saved = await showSubjectSheet(context, existing: subject);
+    if (saved != null) _loadSubjects();
+  }
 
-    final nameController = TextEditingController(text: currentName);
-
-    int selectedColorIndex = 0;
-    try {
-      final cardColor = Color(int.parse(colorStr.replaceFirst('#', '0xFF')));
-      final index = AppColors.subjectColors.indexWhere(
-        (c) => c.toARGB32() == cardColor.toARGB32(),
-      );
-      if (index != -1) {
-        selectedColorIndex = index;
-      }
-    } catch (_) {}
-
-    showModalBottomSheet(
-      useRootNavigator: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.darkSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: AppSpacing.xl,
-                right: AppSpacing.xl,
-                top: AppSpacing.xl,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.darkBorder,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  Text(
-                    'Edit Subject',
-                    style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Name input
-                  TextField(
-                    controller: nameController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Subject name (e.g. Calculus)',
-                      prefixIcon: Icon(Icons.book_outlined),
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Color picker
-                  Text(
-                    'Color',
-                    style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
-                      color: AppColors.textSecondaryDark,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: List.generate(
-                      AppColors.subjectColors.length,
-                      (i) => GestureDetector(
-                        onTap: () =>
-                            setSheetState(() => selectedColorIndex = i),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppColors.subjectColors[i],
-                            borderRadius: BorderRadius.circular(10),
-                            border: selectedColorIndex == i
-                                ? Border.all(color: Colors.white, width: 2.5)
-                                : null,
-                          ),
-                          child: selectedColorIndex == i
-                              ? const Icon(
-                                  Icons.check_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xxl),
-
-                  // Save button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final name = nameController.text.trim();
-                        if (name.isEmpty) return;
-
-                        Navigator.of(ctx).pop();
-                        final colorHex =
-                            '#${AppColors.subjectColors[selectedColorIndex].toARGB32().toRadixString(16).substring(2)}';
-
-                        try {
-                          await _subjectDao.updateSubject(
-                            id,
-                            name: name,
-                            color: colorHex,
-                          );
-                          _loadSubjects();
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  ErrorMessages.from(
-                                    e,
-                                    action: 'update the subject',
-                                  ),
-                                ),
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      child: const Text('Save Changes'),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+  /// Give a course its own lab folder and open it.
+  Future<void> _addLab(Map<String, dynamic> subject) async {
+    final labId = await _subjectDao.labFor(subject['id'] as String);
+    if (!mounted) return;
+    await context.push('/subjects/$labId');
+    if (mounted) _loadSubjects();
   }
 
   @override
@@ -310,6 +164,8 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     }
 
     final courses = _courses;
+    final labs = courses.where((s) => s['isLab'] == true).length;
+    final theory = courses.length - labs;
     final unsorted = _unsorted;
     final lectures = _subjects.fold<int>(
       0,
@@ -349,8 +205,11 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
             title: 'Subjects',
             subtitle: courses.isEmpty
                 ? 'Your courses, and every lecture in them'
-                : '${courses.length} course${courses.length == 1 ? '' : 's'}'
-                      ' · $lectures lecture${lectures == 1 ? '' : 's'}',
+                : [
+                    '$theory course${theory == 1 ? '' : 's'}',
+                    if (labs > 0) '$labs lab${labs == 1 ? '' : 's'}',
+                    '$lectures lecture${lectures == 1 ? '' : 's'}',
+                  ].join(' · '),
             trailing: _ViewToggle(isGrid: _isGridView, onTap: _toggleViewMode),
           ),
           const SizedBox(height: 18),
@@ -397,12 +256,25 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit subject'),
+              title: Text(
+                subject['isLab'] == true ? 'Edit lab' : 'Edit subject',
+              ),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _showEditDialog(subject);
               },
             ),
+            if (subject['isLab'] != true &&
+                !_subjects.any((s) => s['labOf'] == subject['id']))
+              ListTile(
+                leading: const Icon(Icons.science_outlined),
+                title: const Text('Add a lab folder'),
+                subtitle: const Text('For a lab with its own teacher'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _addLab(subject);
+                },
+              ),
             ListTile(
               leading: const Icon(
                 Icons.delete_outline_rounded,
@@ -428,8 +300,11 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.darkSurface,
-        title: const Text('Delete Subject?'),
-        content: const Text('Its recordings will be moved to Unsorted.'),
+        title: const Text('Delete subject?'),
+        content: const Text(
+          'Its recordings move to Unsorted and its classes leave the '
+          'timetable. A lab of it stays as a folder of its own.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -607,6 +482,8 @@ class _SubjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = subject['name'] as String? ?? 'Untitled';
+    final isLab = subject['isLab'] == true;
+    final teacher = subject['teacher'] as String?;
     final color = isUnsorted
         ? AppColors.textSecondary
         : AppColors.fromHex(subject['color'] as String?);
@@ -638,9 +515,9 @@ class _SubjectCard extends StatelessWidget {
           ),
         ],
       ),
-      child: isUnsorted
-          ? const Icon(
-              Icons.inbox_rounded,
+      child: isUnsorted || isLab
+          ? Icon(
+              isUnsorted ? Icons.inbox_rounded : ClassKindIcon.labIcon,
               color: AppColors.textOnPrimary,
               size: 22,
             )
@@ -730,7 +607,7 @@ class _SubjectCard extends StatelessWidget {
       ),
     );
     final subtitle = Text(
-      isUnsorted ? '$meta · quick records' : meta,
+      isUnsorted ? '$meta · quick records' : teacher ?? meta,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
@@ -758,7 +635,15 @@ class _SubjectCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          title,
+                          Row(
+                            children: [
+                              Flexible(child: title),
+                              if (isLab) ...[
+                                const SizedBox(width: 6),
+                                _LabTag(ink: ink),
+                              ],
+                            ],
+                          ),
                           const SizedBox(height: 2),
                           subtitle,
                           if (next != null) ...[
@@ -776,7 +661,12 @@ class _SubjectCard extends StatelessWidget {
                   children: [
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [badge, const Spacer(), ?needsAi],
+                      children: [
+                        badge,
+                        const Spacer(),
+                        ?needsAi,
+                        if (isLab && needsAi == null) _LabTag(ink: ink),
+                      ],
                     ),
                     const Spacer(),
                     title,
@@ -796,6 +686,33 @@ class _SubjectCard extends StatelessWidget {
                         ),
                   ],
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Marks a lab folder, so it reads apart from its theory course.
+class _LabTag extends StatelessWidget {
+  final Color ink;
+
+  const _LabTag({required this.ink});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: ink,
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: const Text(
+        'LAB',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.8,
+          color: AppColors.textOnPrimary,
         ),
       ),
     );

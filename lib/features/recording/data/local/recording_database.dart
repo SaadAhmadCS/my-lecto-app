@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+
+import '../../../subjects/data/lab_subjects.dart';
 
 /// The app's only store. Everything lives on the device.
 ///
@@ -10,7 +13,9 @@ class RecordingDatabase {
   static const String _dbName = 'lecto_recordings.db';
 
   /// 2: added `timetable_slots` for class reminders.
-  static const int _dbVersion = 2;
+  /// 3: subjects gained `lab_of` and `teacher`; lab classes moved into their
+  ///    own lab subjects.
+  static const int _dbVersion = 3;
 
   /// Subject used when a recording is started without picking one.
   static const String unsortedSubjectId = 'unsorted';
@@ -28,12 +33,19 @@ class RecordingDatabase {
       path,
       version: _dbVersion,
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
+      onUpgrade: upgrade,
     );
   }
 
-  static Future<void> _onUpgrade(Database db, int from, int to) async {
+  @visibleForTesting
+  static Future<void> upgrade(Database db, int from, int to) async {
     if (from < 2) await _createTimetable(db);
+    // sqflite already runs this in a transaction: all of it, or none.
+    if (from < 3) {
+      await db.execute('ALTER TABLE subjects ADD COLUMN lab_of TEXT');
+      await db.execute('ALTER TABLE subjects ADD COLUMN teacher TEXT');
+      await LabSubjects.splitTimetableLabs(db);
+    }
   }
 
   /// One weekly class: a subject on a weekday between two times.
@@ -60,12 +72,15 @@ class RecordingDatabase {
   }
 
   static Future<void> _onCreate(Database db, int version) async {
-    // Subjects a lecture can be filed under.
+    // Subjects a lecture can be filed under. A lab is its own subject, with
+    // `lab_of` pointing at its theory course.
     await db.execute('''
       CREATE TABLE subjects (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         color TEXT NOT NULL DEFAULT '#6366F1',
+        lab_of TEXT,
+        teacher TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )

@@ -14,6 +14,7 @@ import '../../../timetable/data/class_slot.dart';
 import '../../../timetable/data/timetable_dao.dart';
 import '../../data/subject_dao.dart';
 import '../subject_format.dart';
+import '../widgets/create_subject_sheet.dart';
 
 /// One course: its lectures, its weekly classes, and a button to record it.
 ///
@@ -34,6 +35,9 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   late final TimetableDao _timetable = context.read<TimetableDao>();
 
   Map<String, dynamic>? _subject;
+
+  /// The course's lab, or the lab's course.
+  Map<String, dynamic>? _pair;
   List<Map<String, dynamic>> _recordings = [];
   List<ClassSlot> _classes = const [];
   RecordingSort _sort = RecordingSort.date;
@@ -49,6 +53,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   Future<void> _load() async {
     try {
       final subject = await _subjectDao.getSubject(widget.subjectId);
+      final pair = await _subjectDao.pairOf(widget.subjectId);
       final recordings = await _feed.list(subjectId: widget.subjectId);
       final classes = (await _timetable.list())
           .where((slot) => slot.subjectId == widget.subjectId)
@@ -57,6 +62,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
       if (!mounted) return;
       setState(() {
         _subject = subject;
+        _pair = pair;
         _recordings = _sort.apply(recordings);
         _classes = classes;
         _isLoading = false;
@@ -84,6 +90,18 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
     await context.push('/recording/$id?title=${Uri.encodeComponent(title)}');
     // It may have been renamed, moved or deleted.
     if (mounted) _load();
+  }
+
+  Future<void> _edit() async {
+    final saved = await showSubjectSheet(context, existing: _subject);
+    if (saved != null && mounted) _load();
+  }
+
+  void _openPair() {
+    final pair = _pair;
+    if (pair == null) return;
+    // Replace rather than stack, so back returns to the Subjects list.
+    context.pushReplacement('/subjects/${pair['id']}');
   }
 
   Future<void> _recordInSubject() async {
@@ -168,8 +186,11 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
         children: [
           _Hero(
             name: _isUnsorted ? 'Unsorted' : _subject!['name'] as String? ?? '',
+            teacher: _subject!['teacher'] as String?,
+            isLab: _subject!['isLab'] == true,
             color: _color,
             isUnsorted: _isUnsorted,
+            onEdit: _isUnsorted ? null : _edit,
             lectures: _recordings.length,
             totalMs: _recordings.fold<int>(
               0,
@@ -182,6 +203,15 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_pair != null) ...[
+                  _PairCard(
+                    pair: _pair!,
+                    color: _color,
+                    thisIsLab: _subject!['isLab'] == true,
+                    onTap: _openPair,
+                  ),
+                  const SizedBox(height: 20),
+                ],
                 if (_classes.isNotEmpty) ...[
                   const _Label('Every week'),
                   SizedBox(
@@ -243,8 +273,11 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
 /// The subject's colour band: back button, big initials, name and stats.
 class _Hero extends StatelessWidget {
   final String name;
+  final String? teacher;
+  final bool isLab;
   final Color color;
   final bool isUnsorted;
+  final VoidCallback? onEdit;
   final int lectures;
   final int totalMs;
   final int awaiting;
@@ -253,6 +286,9 @@ class _Hero extends StatelessWidget {
     required this.name,
     required this.color,
     required this.isUnsorted,
+    this.teacher,
+    this.isLab = false,
+    this.onEdit,
     required this.lectures,
     required this.totalMs,
     required this.awaiting,
@@ -272,22 +308,21 @@ class _Hero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Material(
-            color: AppColors.surface.withValues(alpha: 0.8),
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () => Navigator.of(context).maybePop(),
-              child: const SizedBox(
-                width: 42,
-                height: 42,
-                child: Icon(
-                  Icons.arrow_back_rounded,
-                  size: 20,
-                  color: AppColors.textPrimary,
-                ),
+          Row(
+            children: [
+              _RoundButton(
+                icon: Icons.arrow_back_rounded,
+                tooltip: 'Back',
+                onTap: () => Navigator.of(context).maybePop(),
               ),
-            ),
+              const Spacer(),
+              if (onEdit != null)
+                _RoundButton(
+                  icon: Icons.edit_outlined,
+                  tooltip: isLab ? 'Edit lab' : 'Edit subject',
+                  onTap: onEdit!,
+                ),
+            ],
           ),
           const SizedBox(height: 18),
           Row(
@@ -307,9 +342,9 @@ class _Hero extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: isUnsorted
-                    ? const Icon(
-                        Icons.inbox_rounded,
+                child: isUnsorted || isLab
+                    ? Icon(
+                        isUnsorted ? Icons.inbox_rounded : ClassKindIcon.labIcon,
                         size: 30,
                         color: AppColors.textOnPrimary,
                       )
@@ -324,17 +359,41 @@ class _Hero extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  name,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 24,
-                    height: 1.15,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.6,
-                    color: ink,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isLab)
+                      Text(
+                        'LAB',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                          color: ink.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    Text(
+                      name,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 24,
+                        height: 1.15,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.6,
+                        color: ink,
+                      ),
+                    ),
+                    if (!isUnsorted) ...[
+                      const SizedBox(height: 6),
+                      _TeacherLine(
+                        teacher: teacher,
+                        isLab: isLab,
+                        ink: ink,
+                        onAdd: onEdit,
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -356,6 +415,187 @@ class _Hero extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RoundButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _RoundButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface.withValues(alpha: 0.8),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Tooltip(
+          message: tooltip,
+          child: SizedBox(
+            width: 42,
+            height: 42,
+            child: Icon(icon, size: 20, color: AppColors.textPrimary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Who teaches it, or a prompt to add them.
+class _TeacherLine extends StatelessWidget {
+  final String? teacher;
+  final bool isLab;
+  final Color ink;
+  final VoidCallback? onAdd;
+
+  const _TeacherLine({
+    required this.teacher,
+    required this.isLab,
+    required this.ink,
+    this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final missing = teacher == null;
+    return GestureDetector(
+      onTap: missing ? onAdd : null,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            missing
+                ? Icons.person_add_alt_1_outlined
+                : Icons.person_outline_rounded,
+            size: 15,
+            color: ink.withValues(alpha: 0.75),
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              teacher ?? (isLab ? 'Add the lab teacher' : 'Add the teacher'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: ink.withValues(alpha: missing ? 0.6 : 0.85),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The other half of the course — its lab, or the theory it belongs to —
+/// one tap away, since their lectures, tasks and quizzes are kept apart.
+class _PairCard extends StatelessWidget {
+  final Map<String, dynamic> pair;
+  final Color color;
+  final bool thisIsLab;
+  final VoidCallback onTap;
+
+  const _PairCard({
+    required this.pair,
+    required this.color,
+    required this.thisIsLab,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = Color.lerp(color, Colors.black, 0.35)!;
+    final count =
+        (pair['_count'] as Map<String, dynamic>?)?['recordings'] as int? ?? 0;
+    final teacher = pair['teacher'] as String?;
+    final details = [
+      ?teacher,
+      count == 0 ? 'No lectures yet' : '$count lecture${count == 1 ? '' : 's'}',
+    ].join(' · ');
+
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: thisIsLab ? color.withValues(alpha: 0.13) : ink,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  thisIsLab ? ClassKindIcon.lectureIcon : ClassKindIcon.labIcon,
+                  size: 20,
+                  color: thisIsLab ? ink : AppColors.textOnPrimary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      thisIsLab ? 'THEORY' : 'LAB',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                        color: ink.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    Text(
+                      pair['name'] as String? ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      details,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

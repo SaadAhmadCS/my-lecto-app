@@ -336,7 +336,10 @@ class _SubjectOption extends StatelessWidget {
         child: Icon(
           // A class on now shows its kind — flask for a lab, book for a
           // lecture — so the two are told apart at a glance.
-          klass?.kindIcon ?? Icons.folder_rounded,
+          klass?.kindIcon ??
+              (subject['isLab'] == true
+                  ? ClassKindIcon.labIcon
+                  : Icons.folder_rounded),
           size: 20,
           color: selected ? AppColors.textOnPrimary : color,
         ),

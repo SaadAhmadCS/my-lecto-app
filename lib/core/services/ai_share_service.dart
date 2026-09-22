@@ -63,6 +63,8 @@ class AiShareService {
   static String buildPrompt({
     required String title,
     String? subjectName,
+    String? teacher,
+    bool isLab = false,
     DateTime? recordingDate,
     Duration? duration,
     bool askForTranscript = true,
@@ -75,8 +77,9 @@ class AiShareService {
       )
       ..writeln()
       ..writeln(
-        'Attached is the audio of a lecture'
-        '${subjectName != null ? ' for $subjectName' : ''}, titled '
+        'Attached is the audio of a ${isLab ? 'lab session' : 'lecture'}'
+        '${subjectName != null ? ' for $subjectName' : ''}'
+        '${teacher != null ? ', taught by $teacher' : ''}, titled '
         '"$title".',
       );
 

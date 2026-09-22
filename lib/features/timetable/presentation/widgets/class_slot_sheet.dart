@@ -84,13 +84,22 @@ class _ClassSlotSheetState extends State<ClassSlotSheet> {
   }
 
   Future<void> _loadSubjects({String? select}) async {
-    final subjects = (await _subjectDao.listSubjects())
+    final all = (await _subjectDao.listSubjects())
         .where((s) => s['id'] != RecordingDatabase.unsortedSubjectId)
         .toList();
+    // Only courses are offered; the Lab switch picks the lab folder. A lab
+    // being edited shows as its course with the switch on.
+    final subjects = all.where((s) => s['labOf'] == null).toList();
+    var selected = select ?? _subjectId;
+    for (final s in all) {
+      if (s['id'] == selected && s['labOf'] != null) {
+        selected = s['labOf'] as String;
+      }
+    }
     if (!mounted) return;
     setState(() {
       _subjects = subjects;
-      _subjectId = select ?? _subjectId;
+      _subjectId = selected;
     });
   }
 
@@ -311,7 +320,7 @@ class _ClassSlotSheetState extends State<ClassSlotSheet> {
                     _SwitchRow(
                       icon: Icons.science_outlined,
                       title: 'It\'s a lab',
-                      subtitle: 'Shown as "Lab" and named that way',
+                      subtitle: 'Its lectures go in the course\'s own lab folder',
                       value: _isLab,
                       onChanged: (v) => setState(() => _isLab = v),
                     ),
