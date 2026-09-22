@@ -94,9 +94,27 @@ class AiShareService {
       )
       ..writeln()
       ..writeln(
-        'Listen to it and reply using EXACTLY the headings below, in '
-        'this order. Do not add any other top-level headings, and do not '
-        'write anything before the first heading.',
+        'Listen to the WHOLE recording, start to end, and reply using '
+        'EXACTLY the headings below, in this order. Do not add any other '
+        'top-level headings, and do not write anything before the first '
+        'heading.',
+      )
+      ..writeln()
+      ..writeln(
+        'Proof, not guesses. The student will act on Important, Exam Hints, '
+        'Assignments, Quizzes & Exams and Tasks, so end every line in those '
+        'sections with the time in the recording where it was said, in '
+        'square brackets, like [0:42:10]. If you cannot point to the moment, '
+        'leave the line out.',
+      )
+      ..writeln()
+      ..writeln(
+        'Most lectures announce no assignment, quiz or exam. List one only '
+        'if the lecturer actually announced it in this recording. Never '
+        'infer one from the subject, a syllabus or what courses usually '
+        'have, and never make up a date, marks, a submission method or a '
+        'scope that was not said — leave a detail out rather than guess. '
+        'For most lectures, leaving those sections out is the right answer.',
       )
       ..writeln()
       ..writeln(summaryHeading)
@@ -107,7 +125,8 @@ class AiShareService {
         '- Anything the student must not miss: announcements, instructions, '
         'changes to the schedule, rules, where to find or submit things, and '
         'anything the lecturer stressed — "remember this", "don\'t forget". '
-        'One line each, in the lecturer\'s own words where possible.',
+        'One line each, in the lecturer\'s own words where possible, '
+        'ending with its time: [0:12:05].',
       )
       ..writeln()
       ..writeln(examHintsHeading)
@@ -116,39 +135,38 @@ class AiShareService {
         'their own words where possible: what "will come" or is "important '
         'for the exam", the kinds of questions they like to ask, how they '
         'mark, mistakes they say students often make, and what to be careful '
-        'with. The student will later use these to prepare for this '
-        'lecturer\'s quizzes and exams, so catch every hint — even a passing '
-        'one.',
+        'with. Quote the lecturer\'s words and end with the time: [1:05:30]. '
+        'The student will later use these to prepare for this lecturer\'s '
+        'quizzes and exams, so catch every real hint — but only what was '
+        'actually said, never general advice.',
       )
       ..writeln()
       ..writeln(assignmentsHeading)
       ..writeln(
-        '- [ ] Assignment name — due YYYY-MM-DD — how to submit it, marks, '
-        'format, group or individual: whatever was said.',
+        '- [ ] Assignment name — due YYYY-MM-DD — what was said about it, '
+        'with the lecturer\'s words in quotes — [0:58:40]',
       )
       ..writeln(
-        '- Only GRADED work the lecturer set as an assignment: homework to '
-        'hand in, a lab report, a project, a problem set that counts. If you '
-        'are unsure whether it is graded, and it sounds like it is handed '
-        'in, put it here. Leave every box unticked. Leave out "due …" if no '
-        'date was given.',
+        '- Only work the lecturer said is to be handed in or graded: '
+        'homework, a lab report, a project, a problem set that counts. Leave '
+        'every box unticked. Leave out "due …" if no date was given.',
       )
       ..writeln()
       ..writeln(quizzesHeading)
       ..writeln(
-        '- YYYY-MM-DD — Quiz, test or exam name — what it covers, its '
-        'format, how long, what is allowed in, how much it counts: whatever '
-        'was said.',
+        '- YYYY-MM-DD — Quiz, test or exam name — what was said about it '
+        '(what it covers, format, length, what is allowed in), with the '
+        'lecturer\'s words in quotes — [1:12:15]',
       )
       ..writeln(
-        '- Every quiz, test, midterm, final or viva the lecture mentions, '
-        'even in passing. Put the date first only if one was given.',
+        '- Every quiz, test, midterm, final or viva the lecturer announced '
+        'in this recording. Put the date first only if one was given.',
       )
       ..writeln()
       ..writeln(tasksHeading)
       ..writeln(
-        '- [ ] Ungraded work to do AFTER class: reading, practice, '
-        'revising, installing something, looking something up.',
+        '- [ ] Ungraded work the lecturer asked for, to do AFTER class: '
+        'reading, practice, revising, installing something — [0:20:30]',
       )
       ..writeln(
         '- [ ] One line each. Leave every box unticked. Exercises done '
@@ -176,7 +194,8 @@ class AiShareService {
       )
       ..writeln(
         '- Use short paragraphs and bullets. Be thorough: '
-        '${_notesLength(duration)}',
+        '${_notesLength(duration)} Never pad to reach that: if less was '
+        'taught, write less. Everything must come from the recording.',
       )
       ..writeln()
       ..writeln(conceptsHeading)

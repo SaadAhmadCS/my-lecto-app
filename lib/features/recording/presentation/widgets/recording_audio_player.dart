@@ -7,13 +7,35 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 
+/// Lets the notes send the player to a moment — "listen to where this was
+/// said" — so an announcement can be checked against the recording.
+class AudioJump {
+  Future<void> Function(Duration at)? _handler;
+  Duration? _pending;
+
+  /// Play from [at]. Before the audio has loaded, it starts there once ready.
+  Future<void> playFrom(Duration at) async {
+    final handler = _handler;
+    if (handler == null) {
+      _pending = at;
+      return;
+    }
+    await handler(at);
+  }
+}
+
 /// Playback bar for a recording's audio chunks stored on this device
 /// (ORG-012). Chunks play back to back with one seek bar across the whole
 /// recording. Renders nothing if the audio isn't on this device.
 class RecordingAudioPlayerBar extends StatefulWidget {
   final String recordingId;
+  final AudioJump? jump;
 
-  const RecordingAudioPlayerBar({super.key, required this.recordingId});
+  const RecordingAudioPlayerBar({
+    super.key,
+    required this.recordingId,
+    this.jump,
+  });
 
   @override
   State<RecordingAudioPlayerBar> createState() =>
@@ -34,13 +56,26 @@ class _RecordingAudioPlayerBarState extends State<RecordingAudioPlayerBar> {
   @override
   void initState() {
     super.initState();
+    widget.jump?._handler = _playFrom;
     _load();
   }
 
   @override
   void dispose() {
+    widget.jump?._handler = null;
     _player.dispose();
     super.dispose();
+  }
+
+  Future<void> _playFrom(Duration at) async {
+    if (!_ready) {
+      widget.jump?._pending = at;
+      return;
+    }
+    // A few seconds early, so the sentence is heard from its start.
+    final start = at - const Duration(seconds: 3);
+    await _seek(start.isNegative ? Duration.zero : start);
+    await _player.play();
   }
 
   Future<void> _load() async {
@@ -88,6 +123,11 @@ class _RecordingAudioPlayerBarState extends State<RecordingAudioPlayerBar> {
         _total = total;
         _ready = total > Duration.zero;
       });
+      final pending = widget.jump?._pending;
+      if (pending != null) {
+        widget.jump?._pending = null;
+        await _playFrom(pending);
+      }
     } catch (e) {
       // Unplayable or missing audio — keep the bar hidden
       debugPrint('RecordingAudioPlayerBar: could not load audio: $e');

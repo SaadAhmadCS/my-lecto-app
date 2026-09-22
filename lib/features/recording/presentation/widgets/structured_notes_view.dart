@@ -22,12 +22,16 @@ class StructuredNotesView extends StatelessWidget {
   /// short enough to take in at a glance.
   final VoidCallback? onOpenStudyGuide;
 
+  /// Plays the recording from where a line was said, to check it.
+  final ValueChanged<Duration>? onPlayAt;
+
   const StructuredNotesView({
     super.key,
     required this.notes,
     required this.markdownStyle,
     this.onToggleTask,
     this.onOpenStudyGuide,
+    this.onPlayAt,
   });
 
   /// The study guide's type: roomy body text and bold topic headings.
@@ -74,7 +78,7 @@ class StructuredNotesView extends StatelessWidget {
       children: [
         // First, so it cannot be scrolled past: what the lecturer stressed.
         if (notes.important.isNotEmpty)
-          _CalloutCard.dontMiss(items: notes.important),
+          _CalloutCard.dontMiss(items: notes.important, onPlayAt: onPlayAt),
         if (notes.summary != null)
           _Card(
             tint: AppColors.tintCoral,
@@ -105,6 +109,10 @@ class StructuredNotesView extends StatelessWidget {
                   _TaskTile(
                     task: assignment,
                     accent: _assignmentInk,
+                    onPlayAt: onPlayAt,
+                    // A made-up assignment costs the student; flag any the
+                    // AI could not place in the recording.
+                    flagUnconfirmed: true,
                     onToggle: onToggleTask == null
                         ? null
                         : () => onToggleTask!(assignment),
@@ -128,13 +136,16 @@ class StructuredNotesView extends StatelessWidget {
                     details: quiz.details,
                     ink: AppColors.inkSky,
                     tint: AppColors.tintSky,
+                    at: quiz.at,
+                    onPlayAt: onPlayAt,
+                    flagUnconfirmed: true,
                   ),
               ],
             ),
           ),
         // Beside the quizzes they help with.
         if (notes.examHints.isNotEmpty)
-          _CalloutCard.examHints(items: notes.examHints),
+          _CalloutCard.examHints(items: notes.examHints, onPlayAt: onPlayAt),
         if (notes.tasks.isNotEmpty)
           _Card(
             tint: AppColors.tintMint,
@@ -149,6 +160,7 @@ class StructuredNotesView extends StatelessWidget {
                 for (final task in notes.tasks)
                   _TaskTile(
                     task: task,
+                    onPlayAt: onPlayAt,
                     onToggle: onToggleTask == null
                         ? null
                         : () => onToggleTask!(task),
@@ -306,15 +318,16 @@ class _CalloutCard extends StatelessWidget {
   final List<Color> gradient;
   final Color labelColor;
   final Color shadow;
+  final ValueChanged<Duration>? onPlayAt;
 
-  const _CalloutCard.dontMiss({required this.items})
+  const _CalloutCard.dontMiss({required this.items, this.onPlayAt})
     : label = "DON'T MISS",
       icon = Icons.priority_high_rounded,
       gradient = const [Color(0xFFF57049), Color(0xFFEC5A32)],
       labelColor = AppColors.textOnPrimary,
       shadow = AppColors.primary;
 
-  const _CalloutCard.examHints({required this.items})
+  const _CalloutCard.examHints({required this.items, this.onPlayAt})
     : label = 'EXAM HINTS',
       icon = Icons.tips_and_updates_rounded,
       gradient = const [Color(0xFF2A2320), Color(0xFF1C1715)],
@@ -385,14 +398,34 @@ class _CalloutCard extends StatelessWidget {
                     ),
                   ),
                   Expanded(
-                    child: SelectableText(
-                      item.replaceAll('**', ''),
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        height: 1.45,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textOnPrimary,
-                      ),
+                    child: Builder(
+                      builder: (context) {
+                        final (text, at) = NotesParser.splitTime(item);
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SelectableText(
+                              text.replaceAll('**', ''),
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                height: 1.45,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textOnPrimary,
+                              ),
+                            ),
+                            if (at != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: _TimeChip(
+                                  at: at,
+                                  color: labelColor,
+                                  onPlayAt: onPlayAt,
+                                  onDark: true,
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -601,6 +634,10 @@ String? _countdown(DateTime? date) {
 class _TaskTile extends StatelessWidget {
   final NoteTask task;
   final VoidCallback? onToggle;
+  final ValueChanged<Duration>? onPlayAt;
+
+  /// Warn when the AI gave no time for it: it may not have been said.
+  final bool flagUnconfirmed;
 
   /// Colour for the due line; an assignment's pink ink.
   final Color accent;
@@ -608,6 +645,8 @@ class _TaskTile extends StatelessWidget {
   const _TaskTile({
     required this.task,
     this.onToggle,
+    this.onPlayAt,
+    this.flagUnconfirmed = false,
     this.accent = AppColors.textSecondary,
   });
 
@@ -719,6 +758,19 @@ class _TaskTile extends StatelessWidget {
                           ),
                         ),
                       ],
+                      if (task.at != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: _TimeChip(
+                            at: task.at!,
+                            color: accent == AppColors.textSecondary
+                                ? AppColors.inkMint
+                                : accent,
+                            onPlayAt: onPlayAt,
+                          ),
+                        )
+                      else if (flagUnconfirmed)
+                        const _Unconfirmed(),
                     ],
                   ),
                 ),
@@ -739,6 +791,9 @@ class _DatedTile extends StatelessWidget {
   final String? details;
   final Color ink;
   final Color tint;
+  final Duration? at;
+  final ValueChanged<Duration>? onPlayAt;
+  final bool flagUnconfirmed;
 
   const _DatedTile({
     required this.date,
@@ -746,6 +801,9 @@ class _DatedTile extends StatelessWidget {
     required this.ink,
     required this.tint,
     this.details,
+    this.at,
+    this.onPlayAt,
+    this.flagUnconfirmed = false,
   });
 
   static const _months = [
@@ -846,6 +904,13 @@ class _DatedTile extends StatelessWidget {
                       color: AppColors.textMuted,
                     ),
                   ),
+                if (at != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: _TimeChip(at: at!, color: ink, onPlayAt: onPlayAt),
+                  )
+                else if (flagUnconfirmed)
+                  const _Unconfirmed(),
               ],
             ),
           ),
@@ -860,6 +925,96 @@ class _DatedTile extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "▶ 1:02:15": where in the recording this was said. Tap to listen.
+class _TimeChip extends StatelessWidget {
+  final Duration at;
+  final Color color;
+  final ValueChanged<Duration>? onPlayAt;
+
+  /// On a dark or coral card rather than a white one.
+  final bool onDark;
+
+  const _TimeChip({
+    required this.at,
+    required this.color,
+    this.onPlayAt,
+    this.onDark = false,
+  });
+
+  static String format(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60).toString().padLeft(h > 0 ? 2 : 1, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return h > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = color;
+    final bg = onDark
+        ? AppColors.textOnPrimary.withValues(alpha: 0.16)
+        : color.withValues(alpha: 0.1);
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(100),
+      child: InkWell(
+        onTap: onPlayAt == null ? null : () => onPlayAt!(at),
+        borderRadius: BorderRadius.circular(100),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 3, 9, 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.play_arrow_rounded, size: 15, color: fg),
+              const SizedBox(width: 2),
+              Text(
+                'Said at ${format(at)}',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// For an assignment or exam the AI gave no time for: it may be invented.
+class _Unconfirmed extends StatelessWidget {
+  const _Unconfirmed();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.help_outline_rounded, size: 14, color: AppColors.warning),
+          SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              'Not confirmed — no time in the recording. Check before '
+              'relying on it.',
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.35,
+                fontWeight: FontWeight.w700,
+                color: AppColors.warning,
+              ),
+            ),
+          ),
         ],
       ),
     );

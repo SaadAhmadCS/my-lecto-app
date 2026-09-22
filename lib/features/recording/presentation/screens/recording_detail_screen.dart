@@ -54,6 +54,9 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   ParsedNotes? _localNotes;
   bool _isSharing = false;
 
+  /// Sends the player to where a line of the notes was said.
+  final AudioJump _jump = AudioJump();
+
   // State
   String _processingStatus = 'pending';
   String? _transcriptContent;
@@ -187,7 +190,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   /// notes.
   Future<void> _pasteNotesFromClipboard() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text?.trim() ?? '';
+    // Nothing is done yet, whatever boxes the AI ticked.
+    final text = NotesParser.untickAll(data?.text?.trim() ?? '');
 
     if (text.isEmpty) {
       _showSnack('Copy your AI\'s reply first, then tap Paste notes.');
@@ -658,6 +662,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       // Plays the audio kept on this device, on every tab and state
       bottomNavigationBar: RecordingAudioPlayerBar(
         recordingId: widget.recordingId,
+        jump: _jump,
       ),
     );
   }
@@ -1056,6 +1061,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       markdownStyle: _markdownStyleSheet(context),
       onToggleTask: parsed.tasks.isEmpty ? null : _toggleTask,
       onOpenStudyGuide: () => _tabController.animateTo(1),
+      onPlayAt: _jump.playFrom,
     );
   }
 

@@ -13,12 +13,16 @@ class NoteTask {
   /// Anything else the lecture said about it: how to submit, marks, format.
   final String? details;
 
+  /// Where in the recording it was said, so the student can listen and check.
+  final Duration? at;
+
   const NoteTask({
     required this.text,
     required this.done,
     required this.lineIndex,
     this.due,
     this.details,
+    this.at,
   });
 }
 
@@ -31,11 +35,15 @@ class NoteQuiz {
   /// What it covers, its format, what is allowed in — whatever was said.
   final String? details;
 
+  /// Where in the recording it was announced.
+  final Duration? at;
+
   const NoteQuiz({
     required this.title,
     required this.rawDate,
     this.date,
     this.details,
+    this.at,
   });
 }
 
@@ -190,7 +198,7 @@ class NotesParser {
         // heading naming another section of the reply ends the notes.
         if (section == _Section.studyGuide &&
             !_endsStudyGuide(_normalize(heading))) {
-          studyGuideLines.add('### ${heading.trim()}');
+          studyGuideLines.add('### ${_topicTitle(heading)}');
           continue;
         }
         if (section == _Section.other) flushExtra();
@@ -213,12 +221,14 @@ class NotesParser {
           if (item != null) concepts.add(item);
         case _Section.tasks:
           final task = _task.firstMatch(line);
-          if (task != null) {
+          if (task != null && !_isInstructionLeak(task.group(2)!)) {
+            final (text, at) = splitTime(task.group(2)!.trim());
             tasks.add(
               NoteTask(
-                text: task.group(2)!.trim(),
+                text: text,
                 done: task.group(1)!.toLowerCase() == 'x',
                 lineIndex: i,
+                at: at,
               ),
             );
           }
@@ -243,7 +253,7 @@ class NotesParser {
             deadlines.add(
               NoteDeadline(
                 rawDate: dated.group(1)!,
-                description: dated.group(2)!.trim(),
+                description: splitTime(dated.group(2)!.trim()).$1,
                 date: DateTime.tryParse(dated.group(1)!),
               ),
             );
@@ -252,7 +262,7 @@ class NotesParser {
             deadlines.add(
               NoteDeadline(
                 rawDate: '',
-                description: (bullet?.group(1) ?? line).trim(),
+                description: splitTime((bullet?.group(1) ?? line).trim()).$1,
               ),
             );
           }
@@ -275,12 +285,14 @@ class NotesParser {
       for (var i = 0; i < lines.length; i++) {
         if (taken.contains(i)) continue;
         final task = _task.firstMatch(lines[i]);
-        if (task != null) {
+        if (task != null && !_isInstructionLeak(task.group(2)!)) {
+          final (text, at) = splitTime(task.group(2)!.trim());
           tasks.add(
             NoteTask(
-              text: task.group(2)!.trim(),
+              text: text,
               done: task.group(1)!.toLowerCase() == 'x',
               lineIndex: i,
+              at: at,
             ),
           );
         }
@@ -313,7 +325,8 @@ class NotesParser {
     final bullet = _bullet.firstMatch(line);
     final text = (bullet?.group(1) ?? trimmed).trim();
     // "None" and friends: the AI saying a section is empty.
-    return _isNothing(text) ? null : text;
+    if (_isNothing(text) || _isInstructionLeak(text)) return null;
+    return text;
   }
 
   /// "- [ ] Lab report 3 — due 2026-10-01 — submit on the portal, 10 marks".
@@ -322,8 +335,9 @@ class NotesParser {
   /// just an unticked one.
   static NoteTask? _assignment(String line, int index) {
     final boxed = _task.firstMatch(line);
-    final text = boxed?.group(2)?.trim() ?? _item(line);
-    if (text == null || _isNothing(text)) return null;
+    final raw = boxed?.group(2)?.trim() ?? _item(line);
+    if (raw == null || _isNothing(raw) || _isInstructionLeak(raw)) return null;
+    final (text, at) = splitTime(raw);
 
     final dateMatch = _isoDate.firstMatch(text);
     final parts = text
@@ -349,13 +363,15 @@ class NotesParser {
       lineIndex: index,
       due: dateMatch == null ? null : DateTime.tryParse(dateMatch.group(0)!),
       details: rest.isEmpty ? null : rest.join(' · '),
+      at: at,
     );
   }
 
   /// "- 2026-09-28 — Quiz 2 on eigenvalues — covers ch 5, closed book".
   static NoteQuiz? _quiz(String line) {
-    final text = _item(line);
-    if (text == null) return null;
+    final raw = _item(line);
+    if (raw == null) return null;
+    final (text, at) = splitTime(raw);
 
     final dateMatch = _isoDate.firstMatch(text);
     final parts = text
@@ -380,7 +396,48 @@ class NotesParser {
       rawDate: dateMatch?.group(0) ?? '',
       date: dateMatch == null ? null : DateTime.tryParse(dateMatch.group(0)!),
       details: rest.isEmpty ? null : rest.join(' · '),
+      at: at,
     );
+  }
+
+  /// "[1:02:15]", "(42:10)" or "[at 0:42:10]": where in the recording a
+  /// line was said. The prompt asks for one on every announcement, so the
+  /// student can listen to the moment instead of trusting the AI.
+  static final RegExp _time = RegExp(
+    r'\s*[\[(]\s*(?:at\s+)?((?:\d{1,2}:)?\d{1,2}:\d{2})\s*[\])]',
+  );
+
+  /// [text] without its trailing time, and the time.
+  static (String, Duration?) splitTime(String text) {
+    final match = _time.allMatches(text).lastOrNull;
+    if (match == null) return (text, null);
+    final parts = match.group(1)!.split(':').map(int.parse).toList();
+    final at = parts.length == 3
+        ? Duration(hours: parts[0], minutes: parts[1], seconds: parts[2])
+        : Duration(minutes: parts[0], seconds: parts[1]);
+    final rest = (text.substring(0, match.start) + text.substring(match.end))
+        .trim()
+        // The separator that stood before the time.
+        .replaceAll(RegExp(r'\s*[—–-]\s*$'), '');
+    return (rest, at);
+  }
+
+  /// Every checkbox unticked. Pasted notes start that way: the AI cannot
+  /// know what the student has done, however it marks the boxes.
+  static String untickAll(String markdown) => markdown.replaceAllMapped(
+    RegExp(r'^(\s*[-*+•]\s*)\[[xX]\]', multiLine: true),
+    (m) => '${m.group(1)}[ ]',
+  );
+
+  /// A line about the prompt itself — "review the lecto_prompt.txt file" —
+  /// which an AI sometimes lists as if it were part of the lecture.
+  static bool _isInstructionLeak(String text) {
+    final t = text.toLowerCase();
+    return t.contains('lecto_prompt') ||
+        t.contains('prompt.txt') ||
+        t.contains('prompt file') ||
+        t.contains('instructions file') ||
+        t.contains('instruction file');
   }
 
   /// Restore topic headings a chat app stripped to bare lines.
@@ -415,13 +472,22 @@ class NotesParser {
         // A blank line before the heading keeps markdown from gluing it to
         // the paragraph above.
         if (out.isNotEmpty && out.last.trim().isNotEmpty) out.add('');
-        out.add('### ${trimmed.replaceAll(RegExp(r':$'), '')}');
+        out.add('### ${_topicTitle(trimmed)}');
       } else {
         out.add(line);
       }
     }
     return out.join('\n');
   }
+
+  /// "Topic 2: Entropy:" → "Entropy".
+  static String _topicTitle(String heading) => heading
+      .trim()
+      .replaceFirst(
+        RegExp(r'^topic\s*\d*\s*[:.\-–—]\s*', caseSensitive: false),
+        '',
+      )
+      .replaceAll(RegExp(r':$'), '');
 
   /// The headings of the reply's other sections, which end the lecture
   /// notes. Anything else is a topic inside them.
