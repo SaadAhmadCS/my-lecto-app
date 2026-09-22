@@ -24,6 +24,7 @@ import '../../data/services/recording_deletion_service.dart';
 import '../widgets/paste_notes_sheet.dart';
 import '../widgets/recording_audio_player.dart';
 import '../widgets/structured_notes_view.dart';
+import '../widgets/lecture_parts_sheet.dart';
 import '../widgets/transcript_search.dart';
 
 /// One recording: its notes, its study guide and its audio.
@@ -56,6 +57,11 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
 
   /// Sends the player to where a line of the notes was said.
   final AudioJump _jump = AudioJump();
+
+  /// A long lecture goes to the AI in parts; these track how far that got.
+  List<LecturePart> _parts = const [];
+  final Set<int> _sharedParts = {};
+  final Set<int> _pastedParts = {};
 
   // State
   String _processingStatus = 'pending';
@@ -107,6 +113,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
     try {
       final row = await _dao.getRecording(widget.recordingId);
       final notes = await _dao.getNotes(widget.recordingId);
+      final chunks = await _dao.getChunks(widget.recordingId);
       final subject = row == null
           ? null
           : await _subjectDao.getSubject(row['subject_id'] as String);
@@ -127,6 +134,17 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
           _recordedAt ??= DateTime.tryParse(row['created_at'] as String? ?? '');
         }
         _subject = subject;
+        _parts = AiShareService.needsParts(_duration)
+            ? AiShareService.planParts([
+                for (final chunk in chunks)
+                  (
+                    path: chunk['file_path'] as String,
+                    length: Duration(
+                      milliseconds: (chunk['duration_ms'] as int?) ?? 0,
+                    ),
+                  ),
+              ])
+            : const [];
         _processingStatus = _localNotes == null
             ? RecordingFeed.awaitingNotes
             : RecordingFeed.ready;
@@ -186,46 +204,100 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
     }
   }
 
+  /// Share one part of a long lecture, with a prompt saying which part it is.
+  Future<bool> _sharePart(LecturePart part) async {
+    try {
+      final shared = await AiShareService.shareToAiApp(
+        recordingId: widget.recordingId,
+        audioPaths: part.chunkPaths,
+        prompt: AiShareService.buildPrompt(
+          title: _title,
+          subjectName: _subject?['name'] as String?,
+          teacher: _subject?['teacher'] as String?,
+          isLab: _subject?['isLab'] == true,
+          recordingDate: _recordedAt,
+          duration: _duration,
+          part: part,
+          language: await TranscriptionLanguage.load(),
+        ),
+        subjectLabel: '$_title · ${part.label}',
+      );
+      if (shared && mounted) setState(() => _sharedParts.add(part.index));
+      return shared;
+    } catch (e) {
+      _showSnack(ErrorMessages.from(e, action: 'share this part'));
+      return false;
+    }
+  }
+
+  void _openParts() {
+    LecturePartsSheet.show(
+      context,
+      parts: _parts,
+      shared: _sharedParts,
+      pasted: _pastedParts,
+      onShare: _sharePart,
+      onPaste: (part) async {
+        // The first part pasted starts the notes over — the student is
+        // redoing the lecture — and the rest are added to it.
+        final saved = await _pasteNotesFromClipboard(
+          addToExisting: _pastedParts.isNotEmpty && _summaryContent != null,
+        );
+        if (saved && mounted) setState(() => _pastedParts.add(part.index));
+        return saved;
+      },
+    );
+  }
+
   /// Take the AI's reply off the clipboard and turn it into this recording's
   /// notes.
-  Future<void> _pasteNotesFromClipboard() async {
+  ///
+  /// With [addToExisting] the reply is added to the notes already here,
+  /// which is how a lecture shared in parts is put back together.
+  Future<bool> _pasteNotesFromClipboard({bool addToExisting = false}) async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     // Nothing is done yet, whatever boxes the AI ticked.
     final text = NotesParser.untickAll(data?.text?.trim() ?? '');
 
     if (text.isEmpty) {
       _showSnack('Copy your AI\'s reply first, then tap Paste notes.');
-      return;
+      return false;
     }
     if (text.length < 40) {
       _showSnack('That looks too short to be a set of notes.');
-      return;
+      return false;
     }
 
+    final existing = _summaryContent;
+    final combined = addToExisting && existing != null
+        ? '$existing\n\n$text'
+        : text;
     final parsed = NotesParser.parse(text);
 
-    if (!mounted) return;
+    if (!mounted) return false;
     // Show what is about to be saved first. A stray tap used to overwrite a
     // lecture's notes with whatever happened to be on the clipboard.
     final confirmed = await PasteNotesSheet.show(
       context,
       notes: parsed,
       markdownStyle: _markdownStyleSheet(context),
-      replacesExisting: _localNotes != null,
+      replacesExisting: _localNotes != null && !addToExisting,
+      addsToExisting: addToExisting && existing != null,
     );
-    if (!confirmed || !mounted) return;
+    if (!confirmed || !mounted) return false;
 
     try {
+      final merged = NotesParser.parse(combined);
       await _dao.saveNotes(
         id: widget.recordingId,
-        notesMarkdown: text,
-        transcriptMarkdown: parsed.transcript,
+        notesMarkdown: combined,
+        transcriptMarkdown: merged.transcript,
       );
 
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
-        _localNotes = parsed;
-        _summaryContent = text;
+        _localNotes = merged;
+        _summaryContent = combined;
         if (parsed.hasTranscript) _transcriptContent = parsed.transcript;
         // Built from the old notes; the next search rebuilds it.
         _searchIndex = null;
@@ -234,12 +306,16 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       });
 
       _showSnack(
-        parsed.isStructured
-            ? 'Notes saved.'
-            : 'Notes saved, though they did not follow the expected format.',
+        !parsed.isStructured
+            ? 'Notes saved, though they did not follow the expected format.'
+            : addToExisting
+            ? 'Added to this lecture\'s notes.'
+            : 'Notes saved.',
       );
+      return true;
     } catch (e) {
       _showSnack(ErrorMessages.from(e, action: 'save these notes'));
+      return false;
     }
   }
 
@@ -390,6 +466,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
           ClipboardData(text: _summaryContent ?? _transcriptContent ?? ''),
         );
         _showSnack('Notes copied to clipboard');
+      case _DetailAction.shareInParts:
+        _openParts();
       case _DetailAction.shareToAi:
         _shareToAiApp();
       case _DetailAction.pasteNotes:
@@ -627,11 +705,17 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                           title: Text('Copy notes'),
                         ),
                       ),
-                    const PopupMenuItem(
-                      value: _DetailAction.shareToAi,
+                    PopupMenuItem(
+                      value: _parts.length > 1
+                          ? _DetailAction.shareInParts
+                          : _DetailAction.shareToAi,
                       child: ListTile(
-                        leading: Icon(Icons.ios_share_rounded),
-                        title: Text('Share audio to your AI'),
+                        leading: const Icon(Icons.ios_share_rounded),
+                        title: Text(
+                          _parts.length > 1
+                              ? 'Share audio in parts'
+                              : 'Share audio to your AI',
+                        ),
                       ),
                     ),
                     const PopupMenuItem(
@@ -973,28 +1057,42 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                   ],
                 ),
                 const SizedBox(height: 18),
-                const _StepRow(
+                _StepRow(
                   number: '1',
-                  text: 'Share the audio — the instructions go with it.',
+                  text: _parts.length > 1
+                      ? 'Share part 1 — the instructions go with it. A long '
+                            'lecture goes over in parts, or the AI skims it.'
+                      : 'Share the audio — the instructions go with it.',
                 ),
                 _StepRow(
                   number: '2',
                   text:
-                      'Pick ${AiShareService.audioCapableApps.join(', ')}, '
+                      'In a NEW chat, pick '
+                      '${AiShareService.audioCapableApps.join(', ')}, '
                       'wait for the upload, then send.',
                 ),
-                const _StepRow(
+                _StepRow(
                   number: '3',
-                  text: 'Copy the whole reply and tap Paste notes.',
+                  text: _parts.length > 1
+                      ? 'Copy the whole reply, paste it back, then do the '
+                            'next part.'
+                      : 'Copy the whole reply and tap Paste notes.',
                 ),
                 const SizedBox(height: 8),
-                PrimaryPillButton(
-                  label: _isSharing
-                      ? 'Preparing audio…'
-                      : 'Share audio to your AI',
-                  icon: Icons.ios_share_rounded,
-                  onPressed: _isSharing ? null : _shareToAiApp,
-                ),
+                if (_parts.length > 1)
+                  PrimaryPillButton(
+                    label: 'Share in ${_parts.length} parts',
+                    icon: Icons.ios_share_rounded,
+                    onPressed: _openParts,
+                  )
+                else
+                  PrimaryPillButton(
+                    label: _isSharing
+                        ? 'Preparing audio…'
+                        : 'Share audio to your AI',
+                    icon: Icons.ios_share_rounded,
+                    onPressed: _isSharing ? null : _shareToAiApp,
+                  ),
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
@@ -1120,7 +1218,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
           SizedBox(
             height: 52,
             child: OutlinedButton.icon(
-              onPressed: _pasteNotesFromClipboard,
+              onPressed: () => _pasteNotesFromClipboard(),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: const BorderSide(color: AppColors.primary),
@@ -1277,7 +1375,15 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   }
 }
 
-enum _DetailAction { rename, move, copy, shareToAi, pasteNotes, delete }
+enum _DetailAction {
+  rename,
+  move,
+  copy,
+  shareToAi,
+  shareInParts,
+  pasteNotes,
+  delete,
+}
 
 /// Owns its controller so it's disposed only after the dialog's close
 /// animation finishes, not while the TextField is still on screen.

@@ -7,6 +7,37 @@ import 'package:share_plus/share_plus.dart';
 import '../constants/transcription_language.dart';
 import 'audio_merge_service.dart';
 
+/// One slice of a long lecture, shared on its own.
+///
+/// An AI app given two hours of audio skims it and fills the gaps from what
+/// a course like this usually contains — which is how a lab report and a
+/// midterm that were never announced ended up in a student's notes. Around
+/// 45 minutes is what one reply covers properly.
+class LecturePart {
+  /// 1-based.
+  final int index;
+  final int total;
+
+  /// Where this part sits in the whole lecture.
+  final Duration start;
+  final Duration end;
+  final List<String> chunkPaths;
+
+  const LecturePart({
+    required this.index,
+    required this.total,
+    required this.start,
+    required this.end,
+    required this.chunkPaths,
+  });
+
+  String get label => 'Part $index of $total';
+
+  String get range =>
+      '${AiShareService.formatClock(start)}–'
+      '${AiShareService.formatClock(end)}';
+}
+
 /// Shares a recording's audio into whichever AI app the student uses.
 ///
 /// Android drops `EXTRA_TEXT` when a file is attached in most receiving apps,
@@ -41,6 +72,73 @@ class AiShareService {
   static const String deadlinesHeading = '## Other Dates';
   static const String transcriptHeading = '## Transcript';
 
+  /// How much audio one AI reply covers properly.
+  static const Duration partLength = Duration(minutes: 45);
+
+  /// Whether a lecture of [duration] should be shared in parts.
+  static bool needsParts(Duration? duration) =>
+      duration != null && duration > partLength + const Duration(minutes: 10);
+
+  /// Group [chunks] into parts of about [partLength], in order.
+  ///
+  /// A chunk is never split: parts land on chunk boundaries, so the audio
+  /// files can be shared as they are.
+  static List<LecturePart> planParts(
+    List<({String path, Duration length})> chunks, {
+    Duration target = partLength,
+  }) {
+    if (chunks.isEmpty) return const [];
+
+    final groups = <List<({String path, Duration length})>>[];
+    var current = <({String path, Duration length})>[];
+    var currentLength = Duration.zero;
+    for (final chunk in chunks) {
+      current.add(chunk);
+      currentLength += chunk.length;
+      if (currentLength >= target) {
+        groups.add(current);
+        current = [];
+        currentLength = Duration.zero;
+      }
+    }
+    if (current.isNotEmpty) {
+      // A short tail rides along with the part before it.
+      if (groups.isNotEmpty && currentLength < target * 0.4) {
+        groups.last.addAll(current);
+      } else {
+        groups.add(current);
+      }
+    }
+
+    final parts = <LecturePart>[];
+    var start = Duration.zero;
+    for (var i = 0; i < groups.length; i++) {
+      final length = groups[i].fold(
+        Duration.zero,
+        (sum, c) => sum + c.length,
+      );
+      parts.add(
+        LecturePart(
+          index: i + 1,
+          total: groups.length,
+          start: start,
+          end: start + length,
+          chunkPaths: [for (final c in groups[i]) c.path],
+        ),
+      );
+      start += length;
+    }
+    return parts;
+  }
+
+  /// "1:05:00" or "45:00".
+  static String formatClock(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60).toString().padLeft(h > 0 ? 2 : 1, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return h > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+
   /// Build the instruction file that rides along with the audio.
   ///
   /// The output contract is strict because Lecto parses the reply back into
@@ -53,6 +151,7 @@ class AiShareService {
     bool isLab = false,
     DateTime? recordingDate,
     Duration? duration,
+    LecturePart? part,
     TranscriptionLanguage language = TranscriptionLanguage.auto,
   }) {
     final buffer = StringBuffer()
@@ -78,6 +177,21 @@ class AiShareService {
     if (duration != null) {
       buffer.writeln('It runs for about ${_formatDuration(duration)}.');
     }
+    if (part != null) {
+      buffer
+        ..writeln()
+        ..writeln(
+          'IMPORTANT: this audio is ${part.label} of that lecture. It covers '
+          '${part.range} of the recording, and nothing else. The other parts '
+          'are handled separately, so write about what you hear here and do '
+          'not guess at what came before or after it.',
+        )
+        ..writeln(
+          'Give every time as its time in the WHOLE lecture: this part starts '
+          'at ${formatClock(part.start)} of the recording, so add that to the '
+          'time you hear something at.',
+        );
+    }
     // Left on auto this says nothing, so the AI works it out — which handles
     // a lecture that switches language mid-sentence better than a guess.
     final languageLine = language.promptLine;
@@ -94,7 +208,7 @@ class AiShareService {
       )
       ..writeln()
       ..writeln(
-        'Listen to the WHOLE recording, start to end, and reply using '
+        '${part == null ? 'Listen to the WHOLE recording, start to end, and reply' : 'Listen to this audio, start to end, and reply'} using '
         'EXACTLY the headings below, in this order. Do not add any other '
         'top-level headings, and do not write anything before the first '
         'heading.',

@@ -21,11 +21,15 @@ class PasteNotesSheet extends StatelessWidget {
   /// Warn that saving replaces notes this recording already has.
   final bool replacesExisting;
 
+  /// This reply is one part of a lecture, added to the notes already here.
+  final bool addsToExisting;
+
   const PasteNotesSheet({
     super.key,
     required this.notes,
     required this.markdownStyle,
     this.replacesExisting = false,
+    this.addsToExisting = false,
   });
 
   static Future<bool> show(
@@ -33,6 +37,7 @@ class PasteNotesSheet extends StatelessWidget {
     required ParsedNotes notes,
     required MarkdownStyleSheet markdownStyle,
     bool replacesExisting = false,
+    bool addsToExisting = false,
   }) async {
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
@@ -46,6 +51,7 @@ class PasteNotesSheet extends StatelessWidget {
         notes: notes,
         markdownStyle: markdownStyle,
         replacesExisting: replacesExisting,
+        addsToExisting: addsToExisting,
       ),
     );
     return confirmed ?? false;
@@ -95,6 +101,12 @@ class PasteNotesSheet extends StatelessWidget {
           if (!notes.isStructured) _warning(context, _unstructuredWarning),
           if (replacesExisting)
             _warning(context, 'Saving replaces the notes already here.'),
+          if (addsToExisting)
+            _warning(
+              context,
+              'This part is added to the notes already here.',
+              isProblem: false,
+            ),
           const Divider(height: AppSpacing.base),
           Expanded(
             child: StructuredNotesView(
@@ -184,7 +196,14 @@ class PasteNotesSheet extends StatelessWidget {
 
   static String _count(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
 
-  Widget _warning(BuildContext context, String message) {
+  /// A note above the preview. [isProblem] colours it as a warning; a plain
+  /// one just says what saving will do.
+  Widget _warning(
+    BuildContext context,
+    String message, {
+    bool isProblem = true,
+  }) {
+    final color = isProblem ? AppColors.warning : AppColors.textSecondary;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.xl,
@@ -195,18 +214,14 @@ class PasteNotesSheet extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            size: 16,
-            color: AppColors.warning,
-          ),
+          Icon(Icons.info_outline_rounded, size: 16, color: color),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               message,
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.warning),
+              ).textTheme.bodySmall?.copyWith(color: color),
             ),
           ),
         ],
