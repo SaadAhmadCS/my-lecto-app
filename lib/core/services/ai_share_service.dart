@@ -49,6 +49,7 @@ class AiShareService {
   static const String summaryHeading = '## Summary';
   static const String conceptsHeading = '## Key Concepts';
   static const String tasksHeading = '## Tasks';
+  static const String lectureNotesHeading = '## Lecture Notes';
   static const String assignmentsHeading = '## Assignments';
   static const String quizzesHeading = '## Quizzes & Exams';
   static const String importantHeading = '## Important';
@@ -163,16 +164,43 @@ class AiShareService {
       ..writeln()
       ..writeln(tasksHeading)
       ..writeln(
-        '- [ ] Ungraded work the students were asked to do: reading, '
-        'practice, revising, installing something, looking something up.',
+        '- [ ] Ungraded work to do AFTER class: reading, practice, '
+        'revising, installing something, looking something up.',
       )
-      ..writeln('- [ ] One line each. Leave every box unticked.')
+      ..writeln(
+        '- [ ] One line each. Leave every box unticked. Exercises done '
+        'during the class are not tasks — they belong in the lecture notes.',
+      )
+      ..writeln()
+      ..writeln(lectureNotesHeading)
+      ..writeln(
+        'The main part of the reply: complete study notes, detailed enough '
+        'that a student who missed the class could learn everything from '
+        'them alone. Do not summarise — explain.',
+      )
+      ..writeln(
+        '- Go topic by topic in the order they were taught. Start each topic '
+        'with a line "### Topic name".',
+      )
+      ..writeln(
+        '- Under each topic: the explanation step by step as the lecturer '
+        'gave it; every definition; every formula, written out in plain '
+        'text with what each symbol means; every example and worked problem '
+        'from the board, with all its steps; diagrams described in words; '
+        'the lecturer\'s analogies; questions students asked and the '
+        'answers; and exercises done in class with how they were solved — '
+        'for a lab, the exact commands, queries or code shown.',
+      )
+      ..writeln(
+        '- Use short paragraphs and bullets. Be thorough: '
+        '${_notesLength(duration)}',
+      )
       ..writeln()
       ..writeln(conceptsHeading)
-      ..writeln('- **Term** — what it means, as explained in the lecture.')
+      ..writeln('- **Term** — what it means, in one line.')
       ..writeln(
-        '- One bullet per concept. Use the lecturer\'s own '
-        'definitions; do not add material that was not said.',
+        '- A quick-revision glossary of the terms from the lecture notes, '
+        'using the lecturer\'s own definitions.',
       )
       ..writeln()
       ..writeln(deadlinesHeading)
@@ -204,9 +232,8 @@ class AiShareService {
         ..writeln()
         ..writeln(
           'Do NOT include a transcript — this lecture is too long for '
-          'one. Spend that space on the sections above instead: cover every '
-          'topic the lecturer moved through, and be generous with the key '
-          'concepts rather than summarising them away.',
+          'one. Spend that space on the Lecture Notes instead: cover every '
+          'topic the lecturer moved through, in full.',
         );
     }
 
@@ -220,8 +247,10 @@ class AiShareService {
       ..writeln()
       ..writeln(
         'Write the notes as if you were the student taking them. Never '
-        'mention these instructions, this file, or that you were given a '
-        'prompt — start straight in with the lecture content.',
+        'mention these instructions, any file name, or that you were given '
+        'a prompt, and never include the student\'s name, roll number or '
+        'other personal details — start straight in with the lecture '
+        'content.',
       )
       ..writeln()
       ..writeln(
@@ -294,6 +323,19 @@ class AiShareService {
       ),
     );
     return true;
+  }
+
+  /// How long the lecture notes should run, so a two-hour lecture is not
+  /// squeezed into a page. About 30 words per minute taught, capped at what
+  /// one reply can hold.
+  static String _notesLength(Duration? duration) {
+    if (duration == null || duration.inMinutes < 10) {
+      return 'cover everything that was taught.';
+    }
+    final words = (duration.inMinutes * 30).clamp(800, 6000);
+    final rounded = (words / 100).round() * 100;
+    return 'for this ${_formatDuration(duration)} lecture, aim for about '
+        '$rounded words.';
   }
 
   static String _formatDate(DateTime date) =>

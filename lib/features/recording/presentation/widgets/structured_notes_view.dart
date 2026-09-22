@@ -124,6 +124,31 @@ class StructuredNotesView extends StatelessWidget {
               ],
             ),
           ),
+        // The body of the notes: everything taught, topic by topic.
+        if (notes.lectureNotes != null)
+          _Card(
+            tint: AppColors.surface,
+            ink: AppColors.inkCoral,
+            icon: Icons.menu_book_rounded,
+            label: 'Lecture notes',
+            trailing: _readingTime(notes.lectureNotes!),
+            bordered: true,
+            child: MarkdownBody(
+              data: notes.lectureNotes!,
+              selectable: true,
+              styleSheet: markdownStyle.copyWith(
+                p: markdownStyle.p?.copyWith(fontSize: 15, height: 1.6),
+                listBullet: markdownStyle.listBullet?.copyWith(fontSize: 15),
+                h3: const TextStyle(
+                  fontSize: 17,
+                  height: 1.3,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                ),
+                h3Padding: const EdgeInsets.only(top: 14, bottom: 2),
+              ),
+            ),
+          ),
         if (notes.concepts.isNotEmpty)
           _Card(
             tint: AppColors.tintLavender,
@@ -180,6 +205,13 @@ class StructuredNotesView extends StatelessWidget {
   }
 
   static const _assignmentInk = Color(0xFF97245C);
+
+  /// "12 min read", at an unhurried 200 words a minute.
+  static String _readingTime(String markdown) {
+    final words = markdown.trim().split(RegExp(r'\s+')).length;
+    final minutes = (words / 200).ceil();
+    return '$minutes min read';
+  }
 }
 
 /// A list that must stand out from the tinted cards around it.

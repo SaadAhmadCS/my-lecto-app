@@ -81,6 +81,10 @@ class ParsedNotes {
   /// What the teacher let slip about exams: what will come, the questions
   /// they like, the mistakes students make, what to be careful with.
   final List<String> examHints;
+
+  /// The full study notes, topic by topic, as markdown with a `###` heading
+  /// per topic.
+  final String? lectureNotes;
   final List<NoteDeadline> deadlines;
   final String? transcript;
 
@@ -97,6 +101,7 @@ class ParsedNotes {
     this.quizzes = const [],
     this.important = const [],
     this.examHints = const [],
+    this.lectureNotes,
     this.deadlines = const [],
     this.transcript,
     this.extraSections = const [],
@@ -114,6 +119,7 @@ class ParsedNotes {
       quizzes.isNotEmpty ||
       important.isNotEmpty ||
       examHints.isNotEmpty ||
+      lectureNotes != null ||
       deadlines.isNotEmpty ||
       extraSections.any((section) => section.title.isNotEmpty);
 
@@ -157,6 +163,7 @@ class NotesParser {
     final quizzes = <NoteQuiz>[];
     final important = <String>[];
     final examHints = <String>[];
+    final lectureNoteLines = <String>[];
     final deadlines = <NoteDeadline>[];
     final transcriptLines = <String>[];
     final extraSections = <NoteSection>[];
@@ -179,6 +186,13 @@ class NotesParser {
       final heading = _headingOf(line);
 
       if (heading != null) {
+        // Topic headings inside the lecture notes belong to them. Only a
+        // heading naming another section of the reply ends the notes.
+        if (section == _Section.lectureNotes &&
+            !_endsLectureNotes(_normalize(heading))) {
+          lectureNoteLines.add('### ${heading.trim()}');
+          continue;
+        }
         if (section == _Section.other) flushExtra();
         final next = _sectionFor(_normalize(heading));
         if (next == _Section.none) {
@@ -220,6 +234,8 @@ class NotesParser {
         case _Section.examHints:
           final item = _item(line);
           if (item != null) examHints.add(item);
+        case _Section.lectureNotes:
+          lectureNoteLines.add(line);
         case _Section.deadlines:
           if (line.trim().isEmpty) continue;
           final dated = _leadingDate.firstMatch(line);
@@ -272,6 +288,7 @@ class NotesParser {
     }
 
     final transcript = transcriptLines.join('\n').trim();
+    final lectureNotes = _withTopicHeadings(lectureNoteLines).trim();
 
     return ParsedNotes(
       rawMarkdown: markdown,
@@ -282,6 +299,7 @@ class NotesParser {
       quizzes: quizzes,
       important: important,
       examHints: examHints,
+      lectureNotes: lectureNotes.isEmpty ? null : lectureNotes,
       deadlines: deadlines,
       transcript: _isMissingTranscript(transcript) ? null : transcript,
       extraSections: extraSections,
@@ -364,6 +382,67 @@ class NotesParser {
       details: rest.isEmpty ? null : rest.join(' · '),
     );
   }
+
+  /// Restore topic headings a chat app stripped to bare lines.
+  ///
+  /// Copying from Gemini turns "### Entropy" into "Entropy". A short line
+  /// that reads like a title — no sentence punctuation, no formula, not a
+  /// bullet — followed by more text is taken as a topic heading again.
+  static String _withTopicHeadings(List<String> lines) {
+    final out = <String>[];
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final trimmed = line.trim();
+      var hasMore = false;
+      for (var j = i + 1; j < lines.length; j++) {
+        if (lines[j].trim().isNotEmpty) {
+          hasMore = true;
+          break;
+        }
+      }
+      final looksLikeTitle =
+          trimmed.isNotEmpty &&
+          trimmed.length <= 70 &&
+          hasMore &&
+          !trimmed.startsWith('#') &&
+          !_bullet.hasMatch(line) &&
+          !_task.hasMatch(line) &&
+          RegExp(r'^[A-Z0-9]').hasMatch(trimmed) &&
+          !RegExp(r'[.,;!?=$`]$').hasMatch(trimmed) &&
+          !trimmed.contains('=') &&
+          trimmed.split(RegExp(r'\s+')).length <= 10;
+      if (looksLikeTitle) {
+        // A blank line before the heading keeps markdown from gluing it to
+        // the paragraph above.
+        if (out.isNotEmpty && out.last.trim().isNotEmpty) out.add('');
+        out.add('### ${trimmed.replaceAll(RegExp(r':$'), '')}');
+      } else {
+        out.add(line);
+      }
+    }
+    return out.join('\n');
+  }
+
+  /// The headings of the reply's other sections, which end the lecture
+  /// notes. Anything else is a topic inside them.
+  static bool _endsLectureNotes(String name) => const {
+    'summary',
+    'important',
+    'exam hints',
+    'assignments',
+    'quizzes exams',
+    'quizzes and exams',
+    'quizzes',
+    'tasks',
+    'key concepts',
+    'concepts',
+    'glossary',
+    'other dates',
+    'dates',
+    'deadlines',
+    'transcript',
+    'full transcript',
+  }.contains(name);
 
   static bool _isNothing(String text) {
     final t = text.toLowerCase().replaceAll(RegExp(r'[^a-z ]'), '').trim();
@@ -502,7 +581,17 @@ class NotesParser {
     if (has('task') || has('action item') || has('to do') || has('todo')) {
       return _Section.tasks;
     }
+    if (has('lecture note') ||
+        has('detailed note') ||
+        has('study note') ||
+        has('class note') ||
+        name == 'notes' ||
+        has('in depth') ||
+        has('detailed explanation')) {
+      return _Section.lectureNotes;
+    }
     if (has('concept') ||
+        has('glossary') ||
         has('definition') ||
         has('key point') ||
         has('important point') ||
@@ -528,6 +617,7 @@ enum _Section {
   quizzes,
   important,
   examHints,
+  lectureNotes,
   deadlines,
   transcript,
   other,

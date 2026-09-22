@@ -203,6 +203,16 @@ class PdfExportService {
       );
     }
 
+    // Long, so laid out straight on the page rather than in one block that
+    // could not break across pages.
+    if (notes.lectureNotes != null) {
+      out
+        ..add(_sectionTitle('Lecture notes', _coral))
+        ..add(pw.SizedBox(height: 6))
+        ..addAll(_parseMarkdown(notes.lectureNotes!, _coral))
+        ..add(pw.SizedBox(height: 14));
+    }
+
     if (notes.concepts.isNotEmpty) {
       out.add(
         _block('Key concepts', _lavTint, _lavInk, [
