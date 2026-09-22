@@ -537,36 +537,41 @@ class _SubjectCard extends StatelessWidget {
         : '$count lecture${count == 1 ? '' : 's'}'
               '${ms > 0 ? ' · ${formatHours(ms)}' : ''}';
 
-    final badge = Container(
-      width: 46,
-      height: 46,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.35),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: isUnsorted || isLab
-          ? Icon(
-              isUnsorted ? Icons.inbox_rounded : ClassKindIcon.labIcon,
-              color: AppColors.textOnPrimary,
-              size: 22,
-            )
-          : Text(
-              subjectInitials(name),
-              style: const TextStyle(
-                color: AppColors.textOnPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.3,
-              ),
+    final badge = Hero(
+      // Flies into the subject's own screen, where it lands as the big
+      // rounded badge.
+      tag: 'subject-badge-${subject['id']}',
+      child: Container(
+        width: 46,
+        height: 46,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
             ),
+          ],
+        ),
+        child: isUnsorted || isLab
+            ? Icon(
+                isUnsorted ? Icons.inbox_rounded : ClassKindIcon.labIcon,
+                color: AppColors.textOnPrimary,
+                size: 22,
+              )
+            : Text(
+                subjectInitials(name),
+                style: const TextStyle(
+                  color: AppColors.textOnPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                ),
+              ),
+      ),
     );
 
     // Lectures still waiting for notes from the student's AI.

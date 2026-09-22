@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 import '../bloc/recording_bloc.dart';
 import '../bloc/recording_state.dart';
 
@@ -55,10 +56,14 @@ class RecordingMiniBar extends StatelessWidget {
               // the audio player on screens without the dock.
               bottom: bottomInset + 96,
               child: Center(
-                child: _Pill(
-                  duration: duration,
-                  paused: paused,
-                  onTap: () => router.push(AppRoutes.record),
+                // Rises into view when a recording starts.
+                child: Appear(
+                  offset: 14,
+                  child: _Pill(
+                    duration: duration,
+                    paused: paused,
+                    onTap: () => router.push(AppRoutes.record),
+                  ),
                 ),
               ),
             );
@@ -94,52 +99,57 @@ class _Pill extends StatelessWidget {
           ? 'Recording paused. Open the recorder.'
           : 'Recording in progress. Open the recorder.',
       // Shadow on an outer box: drawn by Ink it is clipped to a pale square.
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(100),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.textPrimary.withValues(alpha: 0.22),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Material(
-          color: paused ? AppColors.navBar : AppColors.primary,
-          borderRadius: BorderRadius.circular(100),
-          child: InkWell(
-            onTap: onTap,
+      child: Pressable(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(100),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 9, 14, 9),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  paused
-                      ? const Icon(
-                          Icons.pause_rounded,
-                          size: 16,
-                          color: AppColors.textOnPrimary,
-                        )
-                      : const _PulsingDot(),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${paused ? 'Paused' : 'Recording'}  ${_format(duration)}',
-                    style: const TextStyle(
-                      color: AppColors.textOnPrimary,
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: [FontFeature.tabularFigures()],
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.textPrimary.withValues(alpha: 0.22),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: paused ? AppColors.navBar : AppColors.primary,
+            borderRadius: BorderRadius.circular(100),
+            child: InkWell(
+              onTap: () {
+                Feel.tap();
+                onTap();
+              },
+              borderRadius: BorderRadius.circular(100),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 9, 14, 9),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    paused
+                        ? const Icon(
+                            Icons.pause_rounded,
+                            size: 16,
+                            color: AppColors.textOnPrimary,
+                          )
+                        : const _PulsingDot(),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${paused ? 'Paused' : 'Recording'}  ${_format(duration)}',
+                      style: const TextStyle(
+                        color: AppColors.textOnPrimary,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: AppColors.textOnPrimary,
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: AppColors.textOnPrimary,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

@@ -43,9 +43,9 @@ class PasteNotesSheet extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
-      backgroundColor: AppColors.darkSurface,
+      backgroundColor: AppColors.background,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (_) => PasteNotesSheet(
         notes: notes,
@@ -68,7 +68,7 @@ class PasteNotesSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.darkBorder,
+              color: AppColors.borderStrong,
               borderRadius: BorderRadius.circular(2),
             ),
           ),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 import '../../../../shared/widgets/primary_pill_button.dart';
 import '../../../../shared/widgets/recording_card.dart';
 import '../../../recording/data/local/recording_database.dart';
@@ -139,8 +140,18 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+      // The course's own shape: coloured band, then its lectures.
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 60, 20, 24),
+        children: const [
+          Skeleton(height: 190, radius: 28),
+          SizedBox(height: 20),
+          Skeleton(height: 74, radius: 20),
+          SizedBox(height: 20),
+          Skeleton(height: 96, radius: 20),
+          SizedBox(height: 12),
+          Skeleton(height: 96, radius: 20),
+        ],
       );
     }
 
@@ -185,6 +196,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
         padding: EdgeInsets.zero,
         children: [
           _Hero(
+            subjectId: widget.subjectId,
             name: _isUnsorted ? 'Unsorted' : _subject!['name'] as String? ?? '',
             teacher: _subject!['teacher'] as String?,
             isLab: _subject!['isLab'] == true,
@@ -282,6 +294,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
 
 /// The subject's colour band: back button, big initials, name and stats.
 class _Hero extends StatelessWidget {
+  final String subjectId;
   final String name;
   final String? teacher;
   final bool isLab;
@@ -293,6 +306,7 @@ class _Hero extends StatelessWidget {
   final int awaiting;
 
   const _Hero({
+    required this.subjectId,
     required this.name,
     required this.color,
     required this.isUnsorted,
@@ -337,37 +351,41 @@ class _Hero extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.4),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: isUnsorted || isLab
-                    ? Icon(
-                        isUnsorted
-                            ? Icons.inbox_rounded
-                            : ClassKindIcon.labIcon,
-                        size: 30,
-                        color: AppColors.textOnPrimary,
-                      )
-                    : Text(
-                        subjectInitials(name),
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textOnPrimary,
-                        ),
+              Hero(
+                // The same badge the Subjects grid was showing, grown.
+                tag: 'subject-badge-$subjectId',
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.4),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
                       ),
+                    ],
+                  ),
+                  child: isUnsorted || isLab
+                      ? Icon(
+                          isUnsorted
+                              ? Icons.inbox_rounded
+                              : ClassKindIcon.labIcon,
+                          size: 30,
+                          color: AppColors.textOnPrimary,
+                        )
+                      : Text(
+                          subjectInitials(name),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textOnPrimary,
+                          ),
+                        ),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
