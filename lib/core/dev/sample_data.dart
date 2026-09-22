@@ -104,7 +104,6 @@ class SampleData {
           'created_at': created.toIso8601String(),
           'updated_at': created.toIso8601String(),
           'notes_markdown': lecture.notes,
-          'transcript_markdown': lecture.transcript,
           'notes_updated_at': lecture.notes == null
               ? null
               : created.toIso8601String(),
@@ -181,30 +180,166 @@ class SampleData {
         title: 'Eigenvalues and eigenvectors',
         minutes: 86,
         notes:
-            '''
+            """
 ## Summary
 Introduced eigenvalues and eigenvectors as the directions a matrix only stretches. Worked through finding them from the characteristic polynomial, then used them to diagonalise a 2×2 matrix.
+
+## Important
+- "Quiz 2 is closed book, but you may bring one A4 formula sheet." — [0:04:12]
+- Office hours move to Thursday 2–4 pm this week only. — [0:06:40]
+
+## Exam Hints
+- "Diagonalisation will definitely come in the final — every year." — [0:58:30]
+- "Most of you lose marks by forgetting to check that the eigenvector is non-zero." — [1:12:05]
+- He marks the working, not the answer: show the characteristic polynomial. — [1:14:20]
+
+## Assignments
+- [ ] Problem set 3 — due ${d(2)} — "questions 1 to 10, handwritten, one PDF on the LMS" — 5% of the grade — [1:21:40]
+
+## Quizzes & Exams
+- ${d(7)} — Quiz 2 — eigenvalues, eigenvectors and diagonalisation — 20 minutes, in class — [0:03:55]
+
+## Tasks
+- [ ] Diagonalise the 3×3 example from the board — [1:18:10]
+- [x] Read section 5.1 — [1:19:02]
+
+## Study Guide
+### What an eigenvector is
+- A matrix usually rotates and stretches a vector. For a few special directions it only stretches: those are the eigenvectors.
+- Formally: a non-zero vector v with Av = λv. The number λ is the eigenvalue — how much that direction is stretched.
+- Negative λ means the direction flips; λ = 1 means the direction is untouched.
+
+### Finding them by hand
+- Move everything to one side: (A − λI)v = 0. A non-zero v exists only when A − λI squashes space flat, so det(A − λI) = 0.
+- That determinant is the characteristic polynomial. Its roots are the eigenvalues.
+- Worked on the board with A = [[4, 1], [2, 3]]: det = (4 − λ)(3 − λ) − 2 = λ² − 7λ + 10, so λ = 5 and λ = 2.
+- Substitute each λ back and solve for v. For λ = 5 the rows both give 2x = y, so v = (1, 2) — any multiple works.
+
+### Diagonalisation
+- Put the eigenvectors in the columns of P and the eigenvalues down the diagonal of D. Then A = PDP⁻¹.
+- Why it matters: A^n = PD^nP⁻¹, and taking a power of a diagonal matrix is just taking powers of the numbers on it.
+- It only works when there are enough independent eigenvectors. A repeated eigenvalue can fail this, and that is the case the exam likes.
 
 ## Key Concepts
 - **Eigenvector** — a non-zero vector v with Av = λv; A only scales it.
 - **Eigenvalue** — the scale factor λ for that eigenvector.
 - **Characteristic polynomial** — det(A − λI) = 0; its roots are the eigenvalues.
-- **Diagonalisation** — A = PDP⁻¹, with eigenvectors in P and eigenvalues on D's diagonal.
+- **Diagonalisation** — A = PDP⁻¹, eigenvectors in P, eigenvalues on D.
+""",
+      ),
+      _Lecture(
+        id: 'db-1',
+        subject: 'db',
+        weekday: DateTime.tuesday,
+        start: '13:30',
+        title: 'Lab: the aggregation pipeline',
+        minutes: 140,
+        notes:
+            """
+## Summary
+Built aggregation pipelines against a live cluster: matching, unwinding arrays, grouping with accumulators, then shaping the output. Ended with a count of tutorials per author.
 
 ## Important
-- Quiz 2 is closed book, but one A4 formula sheet is allowed.
-- Office hours move to Thursday 2–4 pm this week only.
+- "The manual is in the shared folder as ATP Labs 3 — don't use last year's." — [0:02:30]
+- Write every key in quotes, or spaces in field names will break the pipeline later. — [0:41:15]
+- A paused cluster has to be resumed by hand before anything runs. — [0:08:05]
+
+## Exam Hints
+- "In the viva I will ask you to explain a pipeline stage by stage." — [1:52:10]
+- "\$unwind before \$group — the other way round is the mistake I see every semester." — [1:10:44]
 
 ## Assignments
-- [ ] Problem set 3 — due ${d(0)} — questions 1–10, handwritten, submit on the LMS as one PDF — 5% of the grade
+- [ ] Lab report 3 — due ${d(5)} — "screenshots of each query and its output, submitted as one PDF" — 10% — [2:04:30]
 
 ## Quizzes & Exams
-- ${d(7)} — Quiz 2 — eigenvalues, eigenvectors and diagonalisation — 20 minutes, in class
+- ${d(12)} — Lab viva — everything from lab 1 to lab 4, at your own machine — [1:51:20]
 
 ## Tasks
-- [ ] Diagonalise the 3×3 example from the board
-- [x] Read section 5.1
-''',
+- [ ] Rewrite today's last query using \$project — [2:01:10]
+
+## Study Guide
+### The pipeline idea
+- An aggregation is a list of stages. Each stage takes documents in and passes documents out; the next stage only sees what the one before produced.
+- The lecturer compared it to a UNIX shell pipeline: the pipe passes the result of one command straight into the next.
+
+### \$match — filter first
+- Put it first whenever you can: everything after it then works on fewer documents, and an index can still be used.
+- Syntax as typed: db.students.aggregate([{ \$match: { semester: 1 } }])
+
+### \$unwind — one document per array element
+- A student with three skills becomes three documents, one per skill, so the skills can be grouped or counted.
+- Syntax as typed: { \$unwind: "\$skills" } — the dollar sign marks a field path.
+
+### \$group — collapse with an accumulator
+- _id is the grouping key; every other field is an accumulator such as \$sum, \$avg or \$max.
+- Counting per author, exactly as on screen: { \$group: { _id: "\$author", tutorials: { \$sum: 1 } } }
+
+### \$project — shape the output
+- Chooses which fields survive, and can rename or compute new ones. Useful last, once the numbers are right.
+
+## Key Concepts
+- **Pipeline** — stages in order, output of one feeding the next.
+- **\$match** — filter documents, best placed first.
+- **\$unwind** — flatten an array into one document per element.
+- **\$group** — collapse documents by a key using accumulators.
+- **\$project** — keep, rename or compute the fields you want.
+""",
+      ),
+      _Lecture(
+        id: 'ml-1',
+        subject: 'ml',
+        weekday: DateTime.wednesday,
+        start: '11:00',
+        title: 'Decision trees and splitting criteria',
+        minutes: 118,
+        notes:
+            """
+## Summary
+Built a decision tree by hand: what the nodes mean, how entropy and information gain choose a split, and why the Gini index is often used instead. Finished on overfitting and the hyperparameters that hold a tree back.
+
+## Important
+- "Bring a calculator to the midterm — entropy by hand, no phones." — [0:11:20]
+- The class on Friday moves to room B-19. — [0:03:02]
+
+## Exam Hints
+- "You will be given a small table and asked for the information gain of one split." — [1:31:40]
+- "Everyone writes log base 10 by accident. It is log base 2." — [0:47:55]
+
+## Quizzes & Exams
+- ${d(9)} — Midterm — decision trees, entropy, overfitting — one hour, open notes — [0:10:50]
+
+## Tasks
+- [ ] Compute entropy for the weather dataset by hand — [1:36:15]
+- [x] Install scikit-learn before the lab — [0:14:40]
+
+## Study Guide
+### The shape of a tree
+- Root node: the whole dataset before any split. Internal nodes: a test on one attribute. Leaves: a class, with no further split.
+- Building is recursive — split, then treat each side as a smaller problem.
+
+### Entropy
+- Entropy measures how mixed a node is. All one class → 0. A perfect 50/50 split of two classes → 1.
+- Formula written on the board: H = −Σ p·log₂(p), summed over the classes in the node.
+- Worked example: 9 yes and 5 no gives H = −(9/14)log₂(9/14) − (5/14)log₂(5/14) ≈ 0.94.
+
+### Information gain
+- Gain = entropy of the parent − the weighted average entropy of the children.
+- The attribute with the highest gain is chosen for the split. The weighting is by how many rows fall into each branch.
+
+### Gini index
+- Gini = 1 − Σ p². Cheaper than entropy because there is no logarithm, and it usually picks the same split.
+
+### Overfitting, and what holds it back
+- An unrestricted tree grows until every leaf is pure, which memorises noise and fails on new data.
+- max_depth, min_samples_split and min_samples_leaf stop it early; pruning cuts branches back afterwards.
+
+## Key Concepts
+- **Entropy** — how mixed a node is; 0 when pure.
+- **Information gain** — the drop in entropy a split buys.
+- **Gini index** — a cheaper impurity measure, 1 − Σ p².
+- **Overfitting** — a tree that memorises the training data.
+- **Pruning** — cutting branches back to generalise better.
+""",
       ),
       _Lecture(
         id: 'toa-1',
@@ -213,56 +348,29 @@ Introduced eigenvalues and eigenvectors as the directions a matrix only stretche
         start: '15:00',
         title: 'From NFA to DFA',
         minutes: 84,
-        notes:
-            '''
+        notes: """
 ## Summary
-Showed that every NFA has an equivalent DFA using the subset construction, and worked an example that grew from 3 states to 5. Ended on why ε-closures are needed first.
+Converted a non-deterministic automaton into a deterministic one by subset construction, then trimmed the unreachable states.
 
-## Key Concepts
-- **NFA** — may have several moves, or none, on a symbol; accepts if any path accepts.
-- **Subset construction** — each DFA state is a set of NFA states.
-- **ε-closure** — every state reachable on empty moves alone.
-- **State explosion** — n NFA states can need up to 2ⁿ DFA states.
-
-## Important
-- "The subset construction will definitely be on the final" — the lecturer said this twice.
-
-## Assignments
-- [ ] Assignment 2 — due ${d(10)} — convert and minimise the automata on sheet 4, groups of two allowed
-
-## Quizzes & Exams
-- ${d(3)} — Quiz 1 — finite automata, NFA to DFA — first 15 minutes of class
+## Exam Hints
+- "The conversion question is worth 15 marks and it is always on the paper." — [1:02:30]
 
 ## Tasks
-- [ ] Convert the three NFAs on sheet 4 to DFAs
-- [ ] Minimise the result of question 2
-''',
-      ),
-      _Lecture(
-        id: 'db-1',
-        subject: 'db',
-        weekday: DateTime.wednesday,
-        start: '08:30',
-        title: 'Indexing with B+ trees',
-        minutes: 112,
-        notes:
-            '''
-## Summary
-Covered why indexes speed up lookups, how a B+ tree keeps every leaf at the same depth, and what splits and merges do on insert and delete.
+- [ ] Convert the three-state NFA from the handout — [1:14:00]
+
+## Study Guide
+### Subset construction
+- Each DFA state is a set of NFA states. Start from the ε-closure of the NFA's start state.
+- For every input symbol, take the union of what each state in the set can reach, then close it again.
+- Stop when no new sets appear. Any set containing an NFA accepting state is accepting.
+
+### Trimming
+- States no path can reach are dropped; they cannot change the language.
 
 ## Key Concepts
-- **Index** — a separate structure that finds rows without scanning the table.
-- **B+ tree** — balanced tree where data pointers live only in the linked leaves.
-- **Fan-out** — children per node; high fan-out keeps the tree shallow.
-- **Clustered index** — the table is stored in index order; only one per table.
-
-## Tasks
-- [ ] Insert keys 5–40 into an order-4 B+ tree by hand
-- [x] Read chapter 14
-
-## Deadlines
-- ${d(9)} — Midterm exam
-''',
+- **ε-closure** — every state reachable without reading input.
+- **Subset construction** — a DFA state is a set of NFA states.
+""",
       ),
       _Lecture(
         id: 'arch-1',
@@ -271,62 +379,20 @@ Covered why indexes speed up lookups, how a B+ tree keeps every leaf at the same
         start: '11:00',
         title: 'Pipelining and hazards',
         minutes: 24,
-        notes:
-            '''
+        notes: """
 ## Summary
-Split instruction execution into five stages to overlap instructions, then looked at the three hazards that stall a pipeline and how forwarding fixes most data hazards.
-
-## Key Concepts
-- **Pipelining** — overlapping fetch, decode, execute, memory and write-back.
-- **Data hazard** — an instruction needs a result that is not written yet.
-- **Forwarding** — passing a result straight from one stage to the next.
-- **Control hazard** — the pipeline does not yet know which way a branch goes.
+A short session on the five-stage pipeline and the three kinds of hazard.
 
 ## Important
-- Lab moves to Room 504 from next week.
-- Bring the MIPS simulator installed on your laptop to every lab.
-
-## Assignments
-- [ ] Lab report 2 — due ${d(5)} — MIPS simulator results, submit on the LMS — 10 marks
-
-## Tasks
-- [ ] Draw the pipeline diagram for the 6-instruction example
-''',
-        transcript: '''
-Right, let's start. Last week an instruction ran from start to finish before the next one began. Today we stop doing that.
-
-Think of a laundry. You don't wait for one load to dry before you start washing the next. Same idea here: five stages — fetch, decode, execute, memory, write-back — and a new instruction enters every cycle.
-
-But there's a catch. Say the second instruction needs the result of the first. The first hasn't written it back yet. That's a data hazard, and without help the pipeline has to stall.
-
-The help is forwarding. The result exists at the end of execute, so we pass it straight across instead of waiting for write-back. That fixes most cases. Loads are the exception — we'll see why next week.
-''',
-      ),
-      _Lecture(
-        id: 'ml-1',
-        subject: 'ml',
-        weekday: DateTime.tuesday,
-        start: '11:00',
-        title: 'Linear regression and gradient descent',
-        minutes: 108,
-        notes:
-            '''
-## Summary
-Fitted a line by minimising mean squared error, first in closed form and then with gradient descent. Spent time on how the learning rate decides whether training converges.
+- "The lab on Friday is cancelled; we meet next week instead." — [0:01:40]
 
 ## Key Concepts
-- **Linear regression** — predicts y as a weighted sum of the features plus a bias.
-- **Mean squared error** — the average squared gap between prediction and truth.
-- **Gradient descent** — step the weights against the gradient of the loss.
-- **Learning rate** — too high overshoots and diverges; too low crawls.
-
-## Assignments
-- [ ] Assignment 1 — due ${d(4)} — implement gradient descent in NumPy, submit the notebook — 10% of the grade
-
-## Tasks
-- [ ] Plot loss against iterations for three learning rates
-''',
+- **Structural hazard** — two instructions want the same hardware.
+- **Data hazard** — an instruction needs a result that is not ready.
+- **Control hazard** — the next instruction depends on a branch.
+""",
       ),
+      // Two with no notes yet, to show the "needs your AI" state.
       _Lecture(
         id: 'cyber-1',
         subject: 'cyber',
@@ -334,28 +400,6 @@ Fitted a line by minimising mean squared error, first in closed form and then wi
         start: '11:00',
         title: 'The CIA triad and threat models',
         minutes: 104,
-        notes: '''
-## Summary
-Defined security through confidentiality, integrity and availability, then built a simple threat model for a university portal: assets, attackers and likely attacks.
-
-## Key Concepts
-- **Confidentiality** — only the right people can read it.
-- **Integrity** — nobody can change it without it being noticed.
-- **Availability** — it is there when it is needed.
-- **Threat model** — what you protect, from whom, and how they would attack.
-
-## Tasks
-- [ ] Write a one-page threat model for your bank's app
-''',
-      ),
-      // Two still waiting for notes, for the "needs your AI" strip.
-      _Lecture(
-        id: 'ml-2',
-        subject: 'ml',
-        weekday: DateTime.wednesday,
-        start: '13:30',
-        title: 'Lab: scikit-learn pipelines',
-        minutes: 162,
       ),
       _Lecture(
         id: 'cyber-2',
@@ -379,7 +423,6 @@ class _Lecture {
   final String title;
   final int minutes;
   final String? notes;
-  final String? transcript;
 
   const _Lecture({
     required this.id,
@@ -389,6 +432,5 @@ class _Lecture {
     required this.title,
     required this.minutes,
     this.notes,
-    this.transcript,
   });
 }
