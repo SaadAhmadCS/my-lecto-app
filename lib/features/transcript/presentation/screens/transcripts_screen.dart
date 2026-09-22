@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/error_messages.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/empty_state.dart';
 import '../../../../core/ui/motion.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../recording/data/local/recording_dao.dart';
@@ -263,50 +264,18 @@ class _TranscriptsScreenState extends State<TranscriptsScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.primaryDeep,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.description_outlined,
-              size: 40,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          Text(
-            'No transcripts yet',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-            child: Text(
-              'Record a lecture to generate your first transcript.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondaryDark,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          FilledButton.icon(
-            onPressed: () => context.push('/record'),
-            icon: const Icon(Icons.mic_rounded),
-            label: const Text('Start Recording'),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-          ),
-        ],
-      ),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 40, 20, 130),
+      children: const [
+        EmptyState(
+          illustration: 'assets/images/home_record.svg',
+          tint: AppColors.tintCoral,
+          title: 'No lectures yet',
+          body:
+              'Every lecture you record lands here, newest first — with '
+              'whether it still needs your AI.',
+        ),
+      ],
     );
   }
 

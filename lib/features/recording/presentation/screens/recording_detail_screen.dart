@@ -809,20 +809,6 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
     final color = AppColors.fromHex(_subject?['color'] as String?);
     final ink = Color.lerp(color, Colors.black, 0.35)!;
     final recordedAt = _recordedAt;
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final duration = _duration;
 
@@ -860,60 +846,64 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_subject != null)
-            Row(
-              children: [
-                Container(
-                  width: 9,
-                  height: 9,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // The block that was on the lecture's card in the list.
+              Hero(
+                tag: 'lecture-date-${widget.recordingId}',
+                child: RecordingDateBlock(
+                  date: recordedAt,
+                  color: color,
+                  width: 62,
+                  height: 68,
                 ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    (_subject!['name'] as String? ?? '').toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.9,
-                      color: ink,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(height: 6),
-          GestureDetector(
-            onTap: _renameRecording,
-            child: Text(
-              _title,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 23,
-                height: 1.2,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-                color: AppColors.textPrimary,
               ),
-            ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_subject != null)
+                      Text(
+                        (_subject!['name'] as String? ?? '').toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.9,
+                          color: ink,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    GestureDetector(
+                      onTap: _renameRecording,
+                      child: Text(
+                        _title,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 21,
+                          height: 1.2,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               if (recordedAt != null)
-                chip(
-                  Icons.event_rounded,
-                  '${days[recordedAt.weekday - 1]} ${recordedAt.day} '
-                  '${months[recordedAt.month - 1]}',
-                ),
+                chip(Icons.event_rounded, days[recordedAt.weekday - 1]),
               if (duration != null)
                 chip(Icons.timer_outlined, formatRecordingDuration(duration)),
               if (_localNotes?.assignments.isNotEmpty ?? false)

@@ -113,26 +113,32 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
                       showBack: true,
                     ),
                     const SizedBox(height: 18),
-                    _NextQuizHero(
-                      next: next,
-                      onTap: next == null ? null : () => _open(next),
+                    Appear(
+                      child: _NextQuizHero(
+                        next: next,
+                        onTap: next == null ? null : () => _open(next),
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    _PrepCard(
-                      title: next == null
-                          ? 'Prepare for an exam'
-                          : 'Prepare for ${next.title}',
-                      onTap: () => _prepare(next),
+                    Appear(
+                      index: 1,
+                      child: _PrepCard(
+                        title: next == null
+                            ? 'Prepare for an exam'
+                            : 'Prepare for ${next.title}',
+                        onTap: () => _prepare(next),
+                      ),
                     ),
                     if (thisWeek.isNotEmpty) ...[
                       const SizedBox(height: 24),
                       _Section('This week', thisWeek.length),
-                      for (final item in thisWeek) _tile(item),
+                      for (var i = 0; i < thisWeek.length; i++)
+                        _tile(thisWeek[i], i),
                     ],
                     if (later.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       _Section('Later', later.length),
-                      for (final item in later) _tile(item),
+                      for (var i = 0; i < later.length; i++) _tile(later[i], i),
                     ],
                   ],
                 ),
@@ -141,9 +147,12 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
     );
   }
 
-  Widget _tile(UpcomingItem item) => Padding(
+  Widget _tile(UpcomingItem item, int index) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
-    child: DeadlineTile(item: item, onTap: () => _open(item)),
+    child: Appear(
+      index: index,
+      child: DeadlineTile(item: item, onTap: () => _open(item)),
+    ),
   );
 }
 

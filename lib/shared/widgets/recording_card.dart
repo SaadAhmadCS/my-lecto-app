@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/ui/motion.dart';
 
 /// Sort orders for recording lists (ORG-005).
 enum RecordingSort {
@@ -83,18 +84,22 @@ String formatRecordingDuration(Duration d) {
 
 // ─── Recording Card ────────────────────────────────────────────────
 
-/// One lecture in a list: a date block in its subject's colour, the title,
-/// when and how long, and whether it still needs the student's AI.
-class RecordingCard extends StatelessWidget {
-  final Map<String, dynamic> recording;
-  final VoidCallback onTap;
-  final bool showSubject;
+/// The date square in a lecture's subject colour.
+///
+/// Shared so the card and the lecture's own header draw exactly the same
+/// thing — which is what lets one fly into the other.
+class RecordingDateBlock extends StatelessWidget {
+  final DateTime? date;
+  final Color color;
+  final double width;
+  final double height;
 
-  const RecordingCard({
+  const RecordingDateBlock({
     super.key,
-    required this.recording,
-    required this.onTap,
-    this.showSubject = true,
+    required this.date,
+    required this.color,
+    this.width = 56,
+    this.height = 60,
   });
 
   static const _months = [
@@ -114,6 +119,62 @@ class RecordingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ink = Color.lerp(color, Colors.black, 0.35)!;
+    final big = height > 62;
+    final day = date;
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(big ? 18 : 14),
+      ),
+      child: day == null
+          ? Icon(Icons.mic_rounded, color: ink)
+          : Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '${day.day}',
+                  style: TextStyle(
+                    fontSize: big ? 26 : 22,
+                    height: 1.05,
+                    fontWeight: FontWeight.w900,
+                    color: ink,
+                  ),
+                ),
+                Text(
+                  _months[day.month - 1],
+                  style: TextStyle(
+                    fontSize: big ? 11 : 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                    color: ink.withValues(alpha: 0.75),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+/// One lecture in a list: a date block in its subject's colour, the title,
+/// when and how long, and whether it still needs the student's AI.
+class RecordingCard extends StatelessWidget {
+  final Map<String, dynamic> recording;
+  final VoidCallback onTap;
+  final bool showSubject;
+
+  const RecordingCard({
+    super.key,
+    required this.recording,
+    required this.onTap,
+    this.showSubject = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final title = recording['title'] as String? ?? 'Untitled';
     final awaiting = recording['processingStatus'] == 'awaiting_paste';
     final created = DateTime.tryParse(recording['createdAt'] as String? ?? '');
@@ -122,125 +183,101 @@ class RecordingCard extends StatelessWidget {
     );
     final subject = recording['subject'] as Map<String, dynamic>?;
     final color = AppColors.fromHex(subject?['color'] as String?);
-    final ink = Color.lerp(color, Colors.black, 0.35)!;
-
     final meta = [
       if (created != null) _when(created),
       if (duration.inSeconds > 0) formatRecordingDuration(duration),
     ].join(' · ');
 
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      scale: 0.98,
+      child: Material(
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.13),
-                  borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: () {
+            Feel.tap();
+            onTap();
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Hero(
+                  // Flies up into the lecture's own screen.
+                  tag: 'lecture-date-${recording['id']}',
+                  child: RecordingDateBlock(date: created, color: color),
                 ),
-                child: created == null
-                    ? Icon(Icons.mic_rounded, color: ink)
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '${created.day}',
-                            style: TextStyle(
-                              fontSize: 22,
-                              height: 1.05,
-                              fontWeight: FontWeight.w900,
-                              color: ink,
-                            ),
-                          ),
-                          Text(
-                            _months[created.month - 1],
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.8,
-                              color: ink.withValues(alpha: 0.75),
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        height: 1.25,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        if (showSubject && subject != null) ...[
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                        ],
-                        Expanded(
-                          child: Text(
-                            [
-                              if (showSubject && subject != null)
-                                subject['name'] as String? ?? '',
-                              meta,
-                            ].where((s) => s.isNotEmpty).join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          height: 1.25,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          if (showSubject && subject != null) ...[
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                          ],
+                          Expanded(
+                            child: Text(
+                              [
+                                if (showSubject && subject != null)
+                                  subject['name'] as String? ?? '',
+                                meta,
+                              ].where((s) => s.isNotEmpty).join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              awaiting
-                  ? const _Pill(
-                      icon: Icons.auto_awesome_rounded,
-                      label: 'Needs AI',
-                      background: AppColors.primary,
-                      foreground: AppColors.textOnPrimary,
-                    )
-                  : const _Pill(
-                      icon: Icons.check_rounded,
-                      label: 'Notes',
-                      background: AppColors.successBg,
-                      foreground: AppColors.success,
-                    ),
-            ],
+                const SizedBox(width: 8),
+                awaiting
+                    ? const _Pill(
+                        icon: Icons.auto_awesome_rounded,
+                        label: 'Needs AI',
+                        background: AppColors.primary,
+                        foreground: AppColors.textOnPrimary,
+                      )
+                    : const _Pill(
+                        icon: Icons.check_rounded,
+                        label: 'Notes',
+                        background: AppColors.successBg,
+                        foreground: AppColors.success,
+                      ),
+              ],
+            ),
           ),
         ),
       ),

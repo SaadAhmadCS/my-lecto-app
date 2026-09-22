@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/ui/motion.dart';
 
 /// The mascot says hello, then opens a window onto the app.
 ///
@@ -32,11 +33,27 @@ class _LaunchIntroState extends State<LaunchIntro>
 
   late final AnimationController _c =
       AnimationController(vsync: this, duration: _duration)
+        ..addListener(_feelTheLanding)
         ..forward().whenComplete(() {
           if (mounted) setState(() => _done = true);
         });
 
   bool _done = false;
+  bool _landed = false;
+
+  /// A tap as the mascot hits the bottom of its bounce, so the app answers
+  /// the moment it is opened.
+  void _feelTheLanding() {
+    if (_landed || _c.value < 0.3) return;
+    _landed = true;
+    Feel.tap();
+  }
+
+  /// Anyone who has seen it once can skip it.
+  void _skip() {
+    if (_c.value > 0.66) return;
+    _c.animateTo(1, duration: Motion.base, curve: Motion.enter);
+  }
 
   /// A slice of the timeline, 0→1 over [begin]–[end] of the whole.
   Animation<double> _phase(
@@ -112,102 +129,107 @@ class _LaunchIntroState extends State<LaunchIntro>
       // back to Flutter's underlined debug look.
       child: Material(
         type: MaterialType.transparency,
-        // Nothing underneath can be tapped until the window has opened.
-        child: AbsorbPointer(
-          child: AnimatedBuilder(
-            animation: _c,
-            builder: (context, _) {
-              final size = MediaQuery.sizeOf(context);
-              final center = size.center(Offset.zero);
-              // Far enough to clear every corner.
-              final maxRadius = size.longestSide;
-              final hole = _reveal.value * maxRadius;
+        // Nothing underneath can be tapped until the window has opened; a
+        // tap on the intro itself skips to the end.
+        child: GestureDetector(
+          onTap: _skip,
+          behavior: HitTestBehavior.opaque,
+          child: AbsorbPointer(
+            child: AnimatedBuilder(
+              animation: _c,
+              builder: (context, _) {
+                final size = MediaQuery.sizeOf(context);
+                final center = size.center(Offset.zero);
+                // Far enough to clear every corner.
+                final maxRadius = size.longestSide;
+                final hole = _reveal.value * maxRadius;
 
-              return ClipPath(
-                clipper: _HoleClipper(center: center, radius: hole),
-                child: Container(
-                  color: AppColors.primary,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: CustomPaint(
-                          painter: _WavesPainter(
-                            center: center,
-                            progress: _waves.value,
-                            faceWidth: LaunchIntro.faceWidth,
+                return ClipPath(
+                  clipper: _HoleClipper(center: center, radius: hole),
+                  child: Container(
+                    color: AppColors.primary,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: _WavesPainter(
+                              center: center,
+                              progress: _waves.value,
+                              faceWidth: LaunchIntro.faceWidth,
+                            ),
                           ),
                         ),
-                      ),
-                      Positioned.fill(
-                        child: Center(
-                          child: Transform.scale(
-                            // Grows away as the window opens through it.
-                            scale: _bounce.value * (1 + _reveal.value * 1.6),
-                            child: Opacity(
-                              opacity: (1 - _reveal.value * 1.4).clamp(
-                                0.0,
-                                1.0,
-                              ),
-                              child: CustomPaint(
-                                size: const Size.square(
-                                  LaunchIntro.faceWidth * 1.6,
+                        Positioned.fill(
+                          child: Center(
+                            child: Transform.scale(
+                              // Grows away as the window opens through it.
+                              scale: _bounce.value * (1 + _reveal.value * 1.6),
+                              child: Opacity(
+                                opacity: (1 - _reveal.value * 1.4).clamp(
+                                  0.0,
+                                  1.0,
                                 ),
-                                painter: _FacePainter(
-                                  faceWidth: LaunchIntro.faceWidth,
-                                  blink: _blink.value,
-                                  rays: _rays.value,
-                                  // Voice bars keep talking throughout.
-                                  talk: _c.value,
+                                child: CustomPaint(
+                                  size: const Size.square(
+                                    LaunchIntro.faceWidth * 1.6,
+                                  ),
+                                  painter: _FacePainter(
+                                    faceWidth: LaunchIntro.faceWidth,
+                                    blink: _blink.value,
+                                    rays: _rays.value,
+                                    // Voice bars keep talking throughout.
+                                    talk: _c.value,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        top: center.dy + LaunchIntro.faceWidth * 0.9,
-                        child: Opacity(
-                          opacity: (1 - _reveal.value * 2).clamp(0.0, 1.0),
-                          child: Column(
-                            children: [
-                              _Rise(
-                                progress: _title.value,
-                                child: const Text(
-                                  'Lecto',
-                                  style: TextStyle(
-                                    color: AppColors.textOnPrimary,
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -1.2,
-                                    height: 1,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _Rise(
-                                progress: _tagline.value,
-                                child: Text(
-                                  'Never miss a word.',
-                                  style: TextStyle(
-                                    color: AppColors.textOnPrimary.withValues(
-                                      alpha: 0.85,
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          top: center.dy + LaunchIntro.faceWidth * 0.9,
+                          child: Opacity(
+                            opacity: (1 - _reveal.value * 2).clamp(0.0, 1.0),
+                            child: Column(
+                              children: [
+                                _Rise(
+                                  progress: _title.value,
+                                  child: const Text(
+                                    'Lecto',
+                                    style: TextStyle(
+                                      color: AppColors.textOnPrimary,
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -1.2,
+                                      height: 1,
                                     ),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                _Rise(
+                                  progress: _tagline.value,
+                                  child: Text(
+                                    'Never miss a word.',
+                                    style: TextStyle(
+                                      color: AppColors.textOnPrimary.withValues(
+                                        alpha: 0.85,
+                                      ),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
