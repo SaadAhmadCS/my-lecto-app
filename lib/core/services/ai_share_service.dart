@@ -52,6 +52,7 @@ class AiShareService {
   static const String assignmentsHeading = '## Assignments';
   static const String quizzesHeading = '## Quizzes & Exams';
   static const String importantHeading = '## Important';
+  static const String examHintsHeading = '## Exam Hints';
   static const String deadlinesHeading = '## Other Dates';
   static const String transcriptHeading = '## Transcript';
 
@@ -121,9 +122,19 @@ class AiShareService {
       ..writeln(
         '- Anything the student must not miss: announcements, instructions, '
         'changes to the schedule, rules, where to find or submit things, and '
-        'anything the lecturer stressed — "this will come in the exam", '
-        '"remember this", "don\'t forget". One line each, in the lecturer\'s '
-        'own words where possible.',
+        'anything the lecturer stressed — "remember this", "don\'t forget". '
+        'One line each, in the lecturer\'s own words where possible.',
+      )
+      ..writeln()
+      ..writeln(examHintsHeading)
+      ..writeln(
+        '- Everything the lecturer let slip about exams, one line each, in '
+        'their own words where possible: what "will come" or is "important '
+        'for the exam", the kinds of questions they like to ask, how they '
+        'mark, mistakes they say students often make, and what to be careful '
+        'with. The student will later use these to prepare for this '
+        'lecturer\'s quizzes and exams, so catch every hint — even a passing '
+        'one.',
       )
       ..writeln()
       ..writeln(assignmentsHeading)

@@ -75,8 +75,12 @@ class ParsedNotes {
   final List<NoteTask> assignments;
   final List<NoteQuiz> quizzes;
 
-  /// Announcements, instructions, exam hints — things not to miss.
+  /// Announcements, instructions, rule changes — things not to miss.
   final List<String> important;
+
+  /// What the teacher let slip about exams: what will come, the questions
+  /// they like, the mistakes students make, what to be careful with.
+  final List<String> examHints;
   final List<NoteDeadline> deadlines;
   final String? transcript;
 
@@ -92,6 +96,7 @@ class ParsedNotes {
     this.assignments = const [],
     this.quizzes = const [],
     this.important = const [],
+    this.examHints = const [],
     this.deadlines = const [],
     this.transcript,
     this.extraSections = const [],
@@ -108,6 +113,7 @@ class ParsedNotes {
       assignments.isNotEmpty ||
       quizzes.isNotEmpty ||
       important.isNotEmpty ||
+      examHints.isNotEmpty ||
       deadlines.isNotEmpty ||
       extraSections.any((section) => section.title.isNotEmpty);
 
@@ -150,6 +156,7 @@ class NotesParser {
     final assignments = <NoteTask>[];
     final quizzes = <NoteQuiz>[];
     final important = <String>[];
+    final examHints = <String>[];
     final deadlines = <NoteDeadline>[];
     final transcriptLines = <String>[];
     final extraSections = <NoteSection>[];
@@ -210,6 +217,9 @@ class NotesParser {
         case _Section.important:
           final item = _item(line);
           if (item != null) important.add(item);
+        case _Section.examHints:
+          final item = _item(line);
+          if (item != null) examHints.add(item);
         case _Section.deadlines:
           if (line.trim().isEmpty) continue;
           final dated = _leadingDate.firstMatch(line);
@@ -271,6 +281,7 @@ class NotesParser {
       assignments: assignments,
       quizzes: quizzes,
       important: important,
+      examHints: examHints,
       deadlines: deadlines,
       transcript: _isMissingTranscript(transcript) ? null : transcript,
       extraSections: extraSections,
@@ -365,6 +376,8 @@ class NotesParser {
       'not mentioned',
       'no assignments',
       'no quizzes',
+      'no hints',
+      'no exam hints',
     }.contains(t);
   }
 
@@ -450,6 +463,17 @@ class NotesParser {
         word('due')) {
       return _Section.deadlines;
     }
+    // Before quizzes: "Exam hints" is advice about exams, not a list of them.
+    if (has('hint') ||
+        has('exam tip') ||
+        has('exam focus') ||
+        has('exam prep') ||
+        has('mistake') ||
+        has('be careful') ||
+        has('what to focus') ||
+        has('likely question')) {
+      return _Section.examHints;
+    }
     if (has('assignment') ||
         has('homework') ||
         has('coursework') ||
@@ -503,6 +527,7 @@ enum _Section {
   assignments,
   quizzes,
   important,
+  examHints,
   deadlines,
   transcript,
   other,

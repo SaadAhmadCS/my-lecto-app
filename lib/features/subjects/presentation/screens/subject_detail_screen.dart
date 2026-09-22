@@ -212,6 +212,16 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                   ),
                   const SizedBox(height: 20),
                 ],
+                if (_recordings.any(
+                  (r) => r['processingStatus'] == RecordingFeed.ready,
+                )) ...[
+                  _ExamPrepButton(
+                    onTap: () => context.push(
+                      AppRoutes.examPrepFor(subjectId: widget.subjectId),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
                 if (_classes.isNotEmpty) ...[
                   const _Label('Every week'),
                   SizedBox(
@@ -415,6 +425,51 @@ class _Hero extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ExamPrepButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ExamPrepButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.navBar,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: const Padding(
+          padding: EdgeInsets.fromLTRB(14, 12, 12, 12),
+          child: Row(
+            children: [
+              Icon(
+                Icons.tips_and_updates_rounded,
+                size: 22,
+                color: Color(0xFFFFC857),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Prepare for a quiz or exam',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textOnPrimary,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: AppColors.textOnPrimary,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

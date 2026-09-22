@@ -106,6 +106,7 @@ class UpcomingItem {
   final UpcomingKind kind;
   final String recordingId;
   final String recordingTitle;
+  final String? subjectId;
   final String? subjectName;
 
   /// The subject's colour, as stored: "#5244e3".
@@ -121,6 +122,7 @@ class UpcomingItem {
     required this.recordingId,
     required this.recordingTitle,
     this.date,
+    this.subjectId,
     this.subjectName,
     this.subjectColor,
     this.details,
@@ -263,6 +265,7 @@ class HomeDigestBuilder {
                 kind: UpcomingKind.assignment,
                 recordingId: id,
                 recordingTitle: title,
+                subjectId: subjectMap?['id'] as String?,
                 subjectName: subject,
                 subjectColor: subjectColor,
                 details: assignment.details,
@@ -295,6 +298,7 @@ class HomeDigestBuilder {
               kind: UpcomingKind.quiz,
               recordingId: id,
               recordingTitle: title,
+              subjectId: subjectMap?['id'] as String?,
               subjectName: subject,
               subjectColor: subjectColor,
               details: quiz.details,
@@ -311,6 +315,7 @@ class HomeDigestBuilder {
               kind: UpcomingKind.from(deadline.description),
               recordingId: id,
               recordingTitle: title,
+              subjectId: subjectMap?['id'] as String?,
               subjectName: subject,
               subjectColor: subjectColor,
             ),

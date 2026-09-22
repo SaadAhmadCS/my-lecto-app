@@ -43,7 +43,8 @@ class StructuredNotesView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
         // First, so it cannot be scrolled past: what the lecturer stressed.
-        if (notes.important.isNotEmpty) _ImportantCard(items: notes.important),
+        if (notes.important.isNotEmpty)
+          _CalloutCard.dontMiss(items: notes.important),
         if (notes.summary != null)
           _Card(
             tint: AppColors.tintCoral,
@@ -99,6 +100,9 @@ class StructuredNotesView extends StatelessWidget {
               ],
             ),
           ),
+        // Beside the quizzes they help with.
+        if (notes.examHints.isNotEmpty)
+          _CalloutCard.examHints(items: notes.examHints),
         if (notes.tasks.isNotEmpty)
           _Card(
             tint: AppColors.tintMint,
@@ -178,11 +182,32 @@ class StructuredNotesView extends StatelessWidget {
   static const _assignmentInk = Color(0xFF97245C);
 }
 
-/// "Don't miss": the lecturer's announcements and emphasis, in coral.
-class _ImportantCard extends StatelessWidget {
+/// A list that must stand out from the tinted cards around it.
+///
+/// "Don't miss" is the lecturer's announcements, in coral. "Exam hints" is
+/// what they let slip about exams, on the dark ink of the nav bar with an
+/// amber label — the part a student revisits before every quiz.
+class _CalloutCard extends StatelessWidget {
   final List<String> items;
+  final String label;
+  final IconData icon;
+  final List<Color> gradient;
+  final Color labelColor;
+  final Color shadow;
 
-  const _ImportantCard({required this.items});
+  const _CalloutCard.dontMiss({required this.items})
+    : label = "DON'T MISS",
+      icon = Icons.priority_high_rounded,
+      gradient = const [Color(0xFFF57049), Color(0xFFEC5A32)],
+      labelColor = AppColors.textOnPrimary,
+      shadow = AppColors.primary;
+
+  const _CalloutCard.examHints({required this.items})
+    : label = 'EXAM HINTS',
+      icon = Icons.tips_and_updates_rounded,
+      gradient = const [Color(0xFF2A2320), Color(0xFF1C1715)],
+      labelColor = const Color(0xFFFFC857),
+      shadow = const Color(0xFF1C1715);
 
   @override
   Widget build(BuildContext context) {
@@ -190,15 +215,15 @@ class _ImportantCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFF57049), Color(0xFFEC5A32)],
+          colors: gradient,
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
+            color: shadow.withValues(alpha: 0.25),
             blurRadius: 18,
             spreadRadius: -6,
             offset: const Offset(0, 8),
@@ -217,20 +242,16 @@ class _ImportantCard extends StatelessWidget {
                   color: AppColors.textOnPrimary.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.priority_high_rounded,
-                  size: 18,
-                  color: AppColors.textOnPrimary,
-                ),
+                child: Icon(icon, size: 18, color: labelColor),
               ),
               const SizedBox(width: 10),
-              const Text(
-                "DON'T MISS",
+              Text(
+                label,
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.1,
-                  color: AppColors.textOnPrimary,
+                  color: labelColor,
                 ),
               ),
             ],
@@ -246,8 +267,8 @@ class _ImportantCard extends StatelessWidget {
                     margin: const EdgeInsets.only(top: 7, right: 10),
                     width: 6,
                     height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.textOnPrimary,
+                    decoration: BoxDecoration(
+                      color: labelColor,
                       shape: BoxShape.circle,
                     ),
                   ),

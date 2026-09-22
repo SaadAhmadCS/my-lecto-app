@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/page_title.dart';
 import '../../../recording/data/local/recording_dao.dart';
@@ -63,6 +64,18 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
         .then((_) => _load());
   }
 
+  void _prepare([UpcomingItem? item]) {
+    context
+        .push(
+          AppRoutes.examPrepFor(
+            subjectId: item?.subjectId,
+            exam: item?.title,
+            date: item?.date,
+          ),
+        )
+        .then((_) => _load());
+  }
+
   @override
   Widget build(BuildContext context) {
     final next = _items.isEmpty ? null : _items.first;
@@ -93,6 +106,13 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
                     _NextQuizHero(
                       next: next,
                       onTap: next == null ? null : () => _open(next),
+                    ),
+                    const SizedBox(height: 12),
+                    _PrepCard(
+                      title: next == null
+                          ? 'Prepare for an exam'
+                          : 'Prepare for ${next.title}',
+                      onTap: () => _prepare(next),
                     ),
                     if (thisWeek.isNotEmpty) ...[
                       const SizedBox(height: 24),
@@ -203,6 +223,78 @@ class _NextQuizHero extends StatelessWidget {
                     if (quiz != null) _BigCountdown(daysAway: quiz.daysAway),
                   ],
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The way into exam prep: every lecture, hint and warning, sent to the
+/// student's AI to prepare them.
+class _PrepCard extends StatelessWidget {
+  final String title;
+  final VoidCallback onTap;
+
+  const _PrepCard({required this.title, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.navBar,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFC857).withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.tips_and_updates_rounded,
+                  size: 20,
+                  color: Color(0xFFFFC857),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textOnPrimary,
+                      ),
+                    ),
+                    Text(
+                      "Built from every lecture and the teacher's hints",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textOnPrimary.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: AppColors.textOnPrimary,
               ),
             ],
           ),

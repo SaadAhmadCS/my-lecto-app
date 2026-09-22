@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/exam_prep/exam_prep_screen.dart';
 import '../../features/home/presentation/screens/calendar_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/home/presentation/screens/tasks_screen.dart';
@@ -31,6 +32,21 @@ class AppRoutes {
   static const String calendar = '/calendar';
   static const String timetable = '/timetable';
   static const String timetableImport = '/timetable-import';
+  static const String examPrep = '/exam-prep';
+
+  /// Exam prep, optionally opened on a course and an announced exam.
+  static String examPrepFor({
+    String? subjectId,
+    String? exam,
+    DateTime? date,
+  }) => Uri(
+    path: examPrep,
+    queryParameters: {
+      'subjectId': ?subjectId,
+      'exam': ?exam,
+      if (date != null) 'date': date.toIso8601String().substring(0, 10),
+    },
+  ).toString();
 }
 
 /// GoRouter configuration.
@@ -102,6 +118,14 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.timetableImport,
         builder: (context, state) => const TimetableImportScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.examPrep,
+        builder: (context, state) => ExamPrepScreen(
+          subjectId: state.uri.queryParameters['subjectId'],
+          examTitle: state.uri.queryParameters['exam'],
+          examDate: state.uri.queryParameters['date'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.quizzes,

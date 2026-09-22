@@ -23,6 +23,8 @@ class PdfExportService {
   static final _pinkInk = PdfColor.fromHex('#97245C');
   static final _skyTint = PdfColor.fromHex('#E1F1FF');
   static final _skyInk = PdfColor.fromHex('#16528E');
+  static final _examInk = PdfColor.fromHex('#231D1A');
+  static final _examAmber = PdfColor.fromHex('#FFC857');
   static final _mintTint = PdfColor.fromHex('#DCF7EA');
   static final _mintInk = PdfColor.fromHex('#0E6245');
   static final _lavTint = PdfColor.fromHex('#EFEAFF');
@@ -159,6 +161,36 @@ class PdfExportService {
           for (final q in notes.quizzes)
             _datedItem(q.date, q.title, q.details, _skyInk),
         ]),
+      );
+    }
+
+    if (notes.examHints.isNotEmpty) {
+      out.add(
+        pw.Container(
+          padding: const pw.EdgeInsets.all(12),
+          margin: const pw.EdgeInsets.only(bottom: 14),
+          decoration: pw.BoxDecoration(
+            color: _examInk,
+            borderRadius: pw.BorderRadius.circular(10),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'EXAM HINTS',
+                style: pw.TextStyle(
+                  fontSize: 9,
+                  fontWeight: pw.FontWeight.bold,
+                  letterSpacing: 1,
+                  color: _examAmber,
+                ),
+              ),
+              pw.SizedBox(height: 6),
+              for (final item in notes.examHints)
+                _bulletLine(item.replaceAll('**', ''), PdfColors.white),
+            ],
+          ),
+        ),
       );
     }
 

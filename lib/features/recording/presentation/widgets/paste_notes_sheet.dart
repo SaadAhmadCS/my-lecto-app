@@ -168,6 +168,8 @@ class PasteNotesSheet extends StatelessWidget {
         notes.quizzes.length == 1
             ? '1 quiz'
             : '${notes.quizzes.length} quizzes',
+      if (notes.examHints.isNotEmpty)
+        _count(notes.examHints.length, 'exam hint'),
       if (notes.concepts.isNotEmpty) _count(notes.concepts.length, 'concept'),
       if (notes.tasks.isNotEmpty) _count(notes.tasks.length, 'task'),
       if (notes.deadlines.isNotEmpty)
