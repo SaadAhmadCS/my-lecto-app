@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 import '../../../../core/theme/app_spacing.dart';
 
 /// Main recording control buttons — record/pause, camera, stop.
@@ -71,7 +72,12 @@ class _RecordingControlsState extends State<RecordingControls>
         _buildSecondaryButton(
           icon: Icons.camera_alt_rounded,
           label: 'Photo',
-          onTap: widget.isRecording ? widget.onCapturePhoto : null,
+          onTap: widget.isRecording
+              ? () {
+                  Feel.tap();
+                  widget.onCapturePhoto();
+                }
+              : null,
         ),
 
         // Record / Pause button (center)
@@ -81,7 +87,12 @@ class _RecordingControlsState extends State<RecordingControls>
         _buildSecondaryButton(
           icon: Icons.stop_rounded,
           label: 'Stop',
-          onTap: widget.isRecording ? widget.onStop : null,
+          onTap: widget.isRecording
+              ? () {
+                  Feel.heavy();
+                  widget.onStop();
+                }
+              : null,
           color: AppColors.textSecondaryDark,
         ),
       ],
@@ -99,7 +110,12 @@ class _RecordingControlsState extends State<RecordingControls>
         return Transform.scale(
           scale: scale,
           child: GestureDetector(
-            onTap: widget.onRecordPause,
+            onTap: () {
+              // Starting and stopping are the moments to feel; pausing is
+              // lighter on purpose.
+              widget.isRecording ? Feel.tap() : Feel.heavy();
+              widget.onRecordPause();
+            },
             child: Container(
               width: 80,
               height: 80,

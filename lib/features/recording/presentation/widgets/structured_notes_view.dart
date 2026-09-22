@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../../../core/services/notes_parser.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 
 /// Renders notes as real UI rather than a wall of markdown.
 ///
@@ -73,152 +74,159 @@ class StructuredNotesView extends StatelessWidget {
     final tasksDone = notes.tasks.where((t) => t.done).length;
     final assignmentsDone = notes.assignments.where((t) => t.done).length;
 
+    final cards = <Widget>[
+      // First, so it cannot be scrolled past: what the lecturer stressed.
+      if (notes.important.isNotEmpty)
+        _CalloutCard.dontMiss(items: notes.important, onPlayAt: onPlayAt),
+      if (notes.summary != null)
+        _Card(
+          tint: AppColors.tintCoral,
+          ink: AppColors.inkCoral,
+          icon: Icons.auto_awesome_rounded,
+          label: 'Summary',
+          child: SelectableText(
+            notes.summary!,
+            style: const TextStyle(
+              fontSize: 15,
+              height: 1.6,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      if (notes.studyGuide != null)
+        _StudyGuideCard(guide: notes.studyGuide!, onOpen: onOpenStudyGuide),
+      if (notes.assignments.isNotEmpty)
+        _Card(
+          tint: AppColors.tintPink,
+          ink: _assignmentInk,
+          icon: Icons.assignment_rounded,
+          label: 'Assignments',
+          trailing: '$assignmentsDone/${notes.assignments.length}',
+          child: Column(
+            children: [
+              for (final assignment in notes.assignments)
+                _TaskTile(
+                  task: assignment,
+                  accent: _assignmentInk,
+                  onPlayAt: onPlayAt,
+                  // A made-up assignment costs the student; flag any the
+                  // AI could not place in the recording.
+                  flagUnconfirmed: true,
+                  onToggle: onToggleTask == null
+                      ? null
+                      : () => onToggleTask!(assignment),
+                ),
+            ],
+          ),
+        ),
+      if (notes.quizzes.isNotEmpty)
+        _Card(
+          tint: AppColors.tintSky,
+          ink: AppColors.inkSky,
+          icon: Icons.quiz_rounded,
+          label: 'Quizzes & exams',
+          trailing: '${notes.quizzes.length}',
+          child: Column(
+            children: [
+              for (final quiz in notes.quizzes)
+                _DatedTile(
+                  date: quiz.date,
+                  title: quiz.title,
+                  details: quiz.details,
+                  ink: AppColors.inkSky,
+                  tint: AppColors.tintSky,
+                  at: quiz.at,
+                  onPlayAt: onPlayAt,
+                  flagUnconfirmed: true,
+                ),
+            ],
+          ),
+        ),
+      // Beside the quizzes they help with.
+      if (notes.examHints.isNotEmpty)
+        _CalloutCard.examHints(items: notes.examHints, onPlayAt: onPlayAt),
+      if (notes.tasks.isNotEmpty)
+        _Card(
+          tint: AppColors.tintMint,
+          ink: AppColors.inkMint,
+          icon: Icons.checklist_rounded,
+          label: 'Tasks',
+          trailing: '$tasksDone/${notes.tasks.length}',
+          child: Column(
+            children: [
+              _Progress(value: tasksDone / notes.tasks.length),
+              const SizedBox(height: 8),
+              for (final task in notes.tasks)
+                _TaskTile(
+                  task: task,
+                  onPlayAt: onPlayAt,
+                  onToggle: onToggleTask == null
+                      ? null
+                      : () => onToggleTask!(task),
+                ),
+            ],
+          ),
+        ),
+      if (notes.concepts.isNotEmpty)
+        _Card(
+          tint: AppColors.tintLavender,
+          ink: AppColors.inkLavender,
+          icon: Icons.lightbulb_rounded,
+          label: 'Key concepts',
+          trailing: '${notes.concepts.length}',
+          child: Column(
+            children: [
+              for (var i = 0; i < notes.concepts.length; i++)
+                _Concept(
+                  number: i + 1,
+                  text: notes.concepts[i],
+                  markdownStyle: markdownStyle,
+                ),
+            ],
+          ),
+        ),
+      if (notes.deadlines.isNotEmpty)
+        _Card(
+          tint: AppColors.tintCream,
+          ink: const Color(0xFFA66E0A),
+          icon: Icons.event_rounded,
+          label: 'Other dates',
+          child: Column(
+            children: [
+              for (final deadline in notes.deadlines)
+                _DatedTile(
+                  date: deadline.date,
+                  title: deadline.description,
+                  ink: const Color(0xFFA66E0A),
+                  tint: AppColors.tintCream,
+                ),
+            ],
+          ),
+        ),
+      // Whatever the AI wrote under headings we don't know. Last, so
+      // nothing the student received is ever hidden from them.
+      for (final section in notes.extraSections)
+        _Card(
+          tint: AppColors.surface,
+          ink: AppColors.textSecondary,
+          icon: Icons.notes_rounded,
+          label: section.title.isEmpty ? 'Also in the notes' : section.title,
+          bordered: true,
+          child: MarkdownBody(
+            data: section.body,
+            styleSheet: markdownStyle,
+            selectable: true,
+          ),
+        ),
+    ];
+
+    // Each card lands just after the one above it, so the notes read as
+    // filling in rather than flashing into place.
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
-        // First, so it cannot be scrolled past: what the lecturer stressed.
-        if (notes.important.isNotEmpty)
-          _CalloutCard.dontMiss(items: notes.important, onPlayAt: onPlayAt),
-        if (notes.summary != null)
-          _Card(
-            tint: AppColors.tintCoral,
-            ink: AppColors.inkCoral,
-            icon: Icons.auto_awesome_rounded,
-            label: 'Summary',
-            child: SelectableText(
-              notes.summary!,
-              style: const TextStyle(
-                fontSize: 15,
-                height: 1.6,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-        if (notes.studyGuide != null)
-          _StudyGuideCard(guide: notes.studyGuide!, onOpen: onOpenStudyGuide),
-        if (notes.assignments.isNotEmpty)
-          _Card(
-            tint: AppColors.tintPink,
-            ink: _assignmentInk,
-            icon: Icons.assignment_rounded,
-            label: 'Assignments',
-            trailing: '$assignmentsDone/${notes.assignments.length}',
-            child: Column(
-              children: [
-                for (final assignment in notes.assignments)
-                  _TaskTile(
-                    task: assignment,
-                    accent: _assignmentInk,
-                    onPlayAt: onPlayAt,
-                    // A made-up assignment costs the student; flag any the
-                    // AI could not place in the recording.
-                    flagUnconfirmed: true,
-                    onToggle: onToggleTask == null
-                        ? null
-                        : () => onToggleTask!(assignment),
-                  ),
-              ],
-            ),
-          ),
-        if (notes.quizzes.isNotEmpty)
-          _Card(
-            tint: AppColors.tintSky,
-            ink: AppColors.inkSky,
-            icon: Icons.quiz_rounded,
-            label: 'Quizzes & exams',
-            trailing: '${notes.quizzes.length}',
-            child: Column(
-              children: [
-                for (final quiz in notes.quizzes)
-                  _DatedTile(
-                    date: quiz.date,
-                    title: quiz.title,
-                    details: quiz.details,
-                    ink: AppColors.inkSky,
-                    tint: AppColors.tintSky,
-                    at: quiz.at,
-                    onPlayAt: onPlayAt,
-                    flagUnconfirmed: true,
-                  ),
-              ],
-            ),
-          ),
-        // Beside the quizzes they help with.
-        if (notes.examHints.isNotEmpty)
-          _CalloutCard.examHints(items: notes.examHints, onPlayAt: onPlayAt),
-        if (notes.tasks.isNotEmpty)
-          _Card(
-            tint: AppColors.tintMint,
-            ink: AppColors.inkMint,
-            icon: Icons.checklist_rounded,
-            label: 'Tasks',
-            trailing: '$tasksDone/${notes.tasks.length}',
-            child: Column(
-              children: [
-                _Progress(value: tasksDone / notes.tasks.length),
-                const SizedBox(height: 8),
-                for (final task in notes.tasks)
-                  _TaskTile(
-                    task: task,
-                    onPlayAt: onPlayAt,
-                    onToggle: onToggleTask == null
-                        ? null
-                        : () => onToggleTask!(task),
-                  ),
-              ],
-            ),
-          ),
-        if (notes.concepts.isNotEmpty)
-          _Card(
-            tint: AppColors.tintLavender,
-            ink: AppColors.inkLavender,
-            icon: Icons.lightbulb_rounded,
-            label: 'Key concepts',
-            trailing: '${notes.concepts.length}',
-            child: Column(
-              children: [
-                for (var i = 0; i < notes.concepts.length; i++)
-                  _Concept(
-                    number: i + 1,
-                    text: notes.concepts[i],
-                    markdownStyle: markdownStyle,
-                  ),
-              ],
-            ),
-          ),
-        if (notes.deadlines.isNotEmpty)
-          _Card(
-            tint: AppColors.tintCream,
-            ink: const Color(0xFFA66E0A),
-            icon: Icons.event_rounded,
-            label: 'Other dates',
-            child: Column(
-              children: [
-                for (final deadline in notes.deadlines)
-                  _DatedTile(
-                    date: deadline.date,
-                    title: deadline.description,
-                    ink: const Color(0xFFA66E0A),
-                    tint: AppColors.tintCream,
-                  ),
-              ],
-            ),
-          ),
-        // Whatever the AI wrote under headings we don't know. Last, so
-        // nothing the student received is ever hidden from them.
-        for (final section in notes.extraSections)
-          _Card(
-            tint: AppColors.surface,
-            ink: AppColors.textSecondary,
-            icon: Icons.notes_rounded,
-            label: section.title.isEmpty ? 'Also in the notes' : section.title,
-            bordered: true,
-            child: MarkdownBody(
-              data: section.body,
-              styleSheet: markdownStyle,
-              selectable: true,
-            ),
-          ),
+        for (var i = 0; i < cards.length; i++)
+          Appear(index: i, child: cards[i]),
       ],
     );
   }
@@ -677,7 +685,12 @@ class _TaskTile extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          onTap: onToggle,
+          onTap: onToggle == null
+              ? null
+              : () {
+                  Feel.done();
+                  onToggle!();
+                },
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
@@ -687,7 +700,8 @@ class _TaskTile extends StatelessWidget {
                 Semantics(
                   checked: task.done,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: Motion.base,
+                    curve: Motion.pop,
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(

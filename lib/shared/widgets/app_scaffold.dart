@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/routes/app_router.dart';
+import '../../core/ui/motion.dart';
 import '../../core/theme/app_colors.dart';
 
 /// Shell for the tabbed screens, with the floating navigation dock.
@@ -63,7 +64,11 @@ class AppScaffold extends StatelessWidget {
               child: _NavDock(
                 destinations: _destinations,
                 currentIndex: current,
-                onSelected: (index) => context.go(_destinations[index].route),
+                onSelected: (index) {
+                  if (index == current) return;
+                  Feel.select();
+                  context.go(_destinations[index].route);
+                },
               ),
             ),
           ),
@@ -176,8 +181,9 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
+          duration: Motion.base,
+          // A touch of overshoot as the coral square lands under the icon.
+          curve: Motion.pop,
           width: 48,
           height: 44,
           alignment: Alignment.center,
@@ -202,13 +208,18 @@ class _NavItem extends StatelessWidget {
                   ]
                 : null,
           ),
-          child: SvgPicture.string(
-            destination.icon,
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(
-              selected ? AppColors.textOnPrimary : _inactive,
-              BlendMode.srcIn,
+          child: AnimatedScale(
+            scale: selected ? 1.12 : 1,
+            duration: Motion.base,
+            curve: Motion.pop,
+            child: SvgPicture.string(
+              destination.icon,
+              width: 20,
+              height: 20,
+              colorFilter: ColorFilter.mode(
+                selected ? AppColors.textOnPrimary : _inactive,
+                BlendMode.srcIn,
+              ),
             ),
           ),
         ),

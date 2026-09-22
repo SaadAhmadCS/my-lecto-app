@@ -56,7 +56,10 @@ class LecturePartsSheet extends StatefulWidget {
 class _LecturePartsSheetState extends State<LecturePartsSheet> {
   int? _busy;
 
-  Future<void> _run(LecturePart part, Future<bool> Function(LecturePart) f) async {
+  Future<void> _run(
+    LecturePart part,
+    Future<bool> Function(LecturePart) f,
+  ) async {
     setState(() => _busy = part.index);
     try {
       await f(part);

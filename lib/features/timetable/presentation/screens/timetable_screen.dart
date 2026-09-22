@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 import '../../data/class_slot.dart';
 import '../../data/timetable_dao.dart';
 import '../../services/class_reminder_service.dart';
@@ -203,7 +204,10 @@ class _TimetableScreenState extends State<TimetableScreen>
                     for (var day = 1; day <= 7; day++)
                       day: _slots.where((s) => s.weekday == day).length,
                   },
-                  onSelected: (day) => setState(() => _day = day),
+                  onSelected: (day) {
+                    if (day != _day) Feel.select();
+                    setState(() => _day = day);
+                  },
                 ),
                 const SizedBox(height: 18),
                 Text(

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/user_profile.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
@@ -74,26 +75,29 @@ class _HomeScreenState extends State<HomeScreen> {
               AppSpacing.huge * 2.2,
             ),
             children: [
-              HomeHeader(
-                name: _name,
-                streakDays: _digest.streakDays,
-                needsAttention: InboxSheet.attentionCount(_digest),
-                onAvatarTap: _editName,
-                onBellTap: () =>
-                    InboxSheet.show(context, _digest).then((_) => _load()),
+              // The screen fills in from the top rather than snapping in.
+              Appear(
+                child: HomeHeader(
+                  name: _name,
+                  streakDays: _digest.streakDays,
+                  needsAttention: InboxSheet.attentionCount(_digest),
+                  onAvatarTap: _editName,
+                  onBellTap: () =>
+                      InboxSheet.show(context, _digest).then((_) => _load()),
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              _buildGreeting(context),
+              Appear(index: 1, child: _buildGreeting(context)),
               const SizedBox(height: AppSpacing.lg),
-              _buildGrid(context),
+              Appear(index: 2, child: _buildGrid(context)),
               if (_digest.awaitingCount > 0) ...[
                 const SizedBox(height: AppSpacing.base),
-                _buildAwaitingPill(context),
+                Appear(index: 3, child: _buildAwaitingPill(context)),
               ],
               const SizedBox(height: AppSpacing.xl),
-              _buildToday(context),
+              Appear(index: 4, child: _buildToday(context)),
               const SizedBox(height: AppSpacing.xl),
-              _buildComingUp(context),
+              Appear(index: 5, child: _buildComingUp(context)),
             ],
           ),
         ),
@@ -226,7 +230,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final count = _digest.awaitingCount;
 
     return InkWell(
-      onTap: () => context.go('/transcripts'),
+      onTap: () {
+        Feel.tap();
+        context.go('/transcripts');
+      },
       borderRadius: BorderRadius.circular(100),
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -276,11 +283,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: AppSpacing.md),
         if (_isLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-            child: Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
+          // Keeps the shape of what is coming, so nothing jumps into place.
+          const Column(
+            children: [
+              Skeleton(height: 62, radius: 18),
+              SizedBox(height: AppSpacing.sm),
+              Skeleton(height: 62, radius: 18),
+            ],
           )
         else if (tasks.isEmpty)
           _EmptyPanel(

@@ -14,6 +14,7 @@ import '../../../../core/services/ai_share_service.dart';
 import '../../../../core/services/notes_parser.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/ui/motion.dart';
 import '../../../../shared/widgets/export_options_sheet.dart';
 import '../../../../shared/widgets/primary_pill_button.dart';
 import '../../../../shared/widgets/recording_card.dart';
@@ -57,6 +58,9 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
 
   /// Sends the player to where a line of the notes was said.
   final AudioJump _jump = AudioJump();
+
+  /// How far down the study guide the student has read, 0 to 1.
+  final ValueNotifier<double> _guideProgress = ValueNotifier(0);
 
   /// A long lecture goes to the AI in parts; these track how far that got.
   List<LecturePart> _parts = const [];
@@ -105,6 +109,10 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Notes ↔ Study guide: a small click, however the tab was changed.
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) Feel.select();
+    });
     _load();
   }
 
@@ -347,6 +355,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
+    _guideProgress.dispose();
     super.dispose();
   }
 
@@ -1264,6 +1273,23 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
             ],
           ),
         ),
+        // A hairline that fills as you read: a long guide otherwise gives
+        // no sense of how much is left.
+        ValueListenableBuilder<double>(
+          valueListenable: _guideProgress,
+          builder: (context, value, _) => Padding(
+            padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: LinearProgressIndicator(
+                value: value,
+                minHeight: 3,
+                backgroundColor: AppColors.surfaceMuted,
+                valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+              ),
+            ),
+          ),
+        ),
         Expanded(
           child: _isSearching && _searchController.text.trim().isNotEmpty
               ? SearchableTranscriptView(
@@ -1272,13 +1298,23 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen>
                   currentMatch: _currentMatch,
                   paragraphKeys: _paragraphKeys,
                 )
-              : Markdown(
-                  data: guide ?? transcript!,
-                  padding: const EdgeInsets.fromLTRB(22, 4, 22, 32),
-                  styleSheet: StructuredNotesView.studyGuideStyle(
-                    _markdownStyleSheet(context),
+              : NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    final m = notification.metrics;
+                    if (m.maxScrollExtent > 0) {
+                      _guideProgress.value = (m.pixels / m.maxScrollExtent)
+                          .clamp(0.0, 1.0);
+                    }
+                    return false;
+                  },
+                  child: Markdown(
+                    data: guide ?? transcript!,
+                    padding: const EdgeInsets.fromLTRB(22, 4, 22, 32),
+                    styleSheet: StructuredNotesView.studyGuideStyle(
+                      _markdownStyleSheet(context),
+                    ),
+                    selectable: true,
                   ),
-                  selectable: true,
                 ),
         ),
       ],

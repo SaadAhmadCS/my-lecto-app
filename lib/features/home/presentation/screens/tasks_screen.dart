@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 import '../../../../shared/widgets/page_title.dart';
 import '../../../recording/data/local/recording_dao.dart';
 import '../../../recording/data/local/recording_feed.dart';
@@ -385,10 +386,14 @@ class _Segmented extends StatelessWidget {
           for (final v in _View.values)
             Expanded(
               child: GestureDetector(
-                onTap: () => onChanged(v),
+                onTap: () {
+                  if (v != view) Feel.select();
+                  onChanged(v);
+                },
                 behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: Motion.base,
+                  curve: Motion.enter,
                   height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(

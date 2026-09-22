@@ -15,6 +15,7 @@ import '../../../timetable/data/class_slot.dart';
 import '../../../timetable/data/timetable_dao.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/ui/motion.dart';
 
 /// Subjects screen — organize lectures by subject/course.
 ///
@@ -138,8 +139,32 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
 
   Widget _buildBody() {
     if (_isLoading && _subjects.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+      // The shape of the grid, so the real cards land where these were.
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+        children: const [
+          Skeleton(width: 180, height: 34, radius: 12),
+          SizedBox(height: 10),
+          Skeleton(width: 240, height: 16),
+          SizedBox(height: 18),
+          Skeleton(height: 128, radius: 24),
+          SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(child: Skeleton(height: 170, radius: 22)),
+              SizedBox(width: 12),
+              Expanded(child: Skeleton(height: 170, radius: 22)),
+            ],
+          ),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: Skeleton(height: 170, radius: 22)),
+              SizedBox(width: 12),
+              Expanded(child: Skeleton(height: 170, radius: 22)),
+            ],
+          ),
+        ],
       );
     }
 
@@ -223,11 +248,23 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
               childAspectRatio: 0.9,
-              children: tiles,
+              children: [
+                for (var i = 0; i < tiles.length; i++)
+                  Appear(
+                    index: i,
+                    child: Pressable(scale: 0.96, child: tiles[i]),
+                  ),
+              ],
             )
           else
-            for (final tile in tiles)
-              Padding(padding: const EdgeInsets.only(bottom: 10), child: tile),
+            for (var i = 0; i < tiles.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Appear(
+                  index: i,
+                  child: Pressable(scale: 0.98, child: tiles[i]),
+                ),
+              ),
         ],
       ),
     );
@@ -621,8 +658,16 @@ class _SubjectCard extends StatelessWidget {
       color: color.withValues(alpha: isUnsorted ? 0.08 : 0.11),
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
-        onTap: onTap,
-        onLongPress: onMore,
+        onTap: () {
+          Feel.tap();
+          onTap();
+        },
+        onLongPress: onMore == null
+            ? null
+            : () {
+                Feel.select();
+                onMore!();
+              },
         borderRadius: BorderRadius.circular(22),
         child: Padding(
           padding: EdgeInsets.all(compact ? 12 : 14),

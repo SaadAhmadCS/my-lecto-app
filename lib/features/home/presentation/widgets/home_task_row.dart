@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/ui/motion.dart';
 import '../../data/home_digest.dart';
 
 /// One task, as in the design: a cream card, a tick, the subject's dot and
@@ -181,8 +182,8 @@ class _Tick extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final circle = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutBack,
+      duration: Motion.base,
+      curve: Motion.pop,
       width: 24,
       height: 24,
       alignment: Alignment.center,
@@ -194,7 +195,7 @@ class _Tick extends StatelessWidget {
             : Border.all(color: AppColors.borderStrong, width: 2),
       ),
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
+        duration: Motion.base,
         transitionBuilder: (child, animation) =>
             ScaleTransition(scale: animation, child: child),
         child: done
@@ -215,7 +216,11 @@ class _Tick extends StatelessWidget {
       label: done ? 'Mark as not done' : 'Mark as done',
       button: true,
       child: GestureDetector(
-        onTap: onTap,
+        onTap: () {
+          // Ticking something off is the small win of the day.
+          Feel.done();
+          onTap!();
+        },
         behavior: HitTestBehavior.opaque,
         child: padded,
       ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ui/motion.dart';
+
 import '../../core/theme/app_colors.dart';
 
 /// The big coral call-to-action: gradient pill, soft glow, white label.
@@ -53,7 +55,12 @@ class PrimaryPillButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(100),
             ),
             child: InkWell(
-              onTap: onPressed,
+              onTap: onPressed == null
+            ? null
+            : () {
+                Feel.tap();
+                onPressed!();
+              },
               borderRadius: BorderRadius.circular(100),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,

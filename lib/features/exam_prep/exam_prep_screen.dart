@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/errors/error_messages.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/ui/motion.dart';
 import '../../shared/widgets/page_title.dart';
 import '../../shared/widgets/primary_pill_button.dart';
 import '../recording/data/local/recording_database.dart';
@@ -472,7 +473,10 @@ class _CourseStrip extends StatelessWidget {
             borderRadius: BorderRadius.circular(100),
             child: InkWell(
               borderRadius: BorderRadius.circular(100),
-              onTap: () => onPick(course),
+              onTap: () {
+                Feel.select();
+                onPick(course);
+              },
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
@@ -543,7 +547,10 @@ class _ExamPicker extends StatelessWidget {
                 ChoiceChip(
                   label: Text(title),
                   selected: selected == null && customTitle == title,
-                  onSelected: (_) => onCustom(title),
+                  onSelected: (_) {
+                    Feel.select();
+                    onCustom(title);
+                  },
                   selectedColor: AppColors.inkSky,
                   labelStyle: TextStyle(
                     fontWeight: FontWeight.w800,
@@ -720,7 +727,12 @@ class _LectureRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: enabled ? () => onChanged!(!selected) : null,
+          onTap: enabled
+              ? () {
+                  Feel.select();
+                  onChanged!(!selected);
+                }
+              : null,
           child: Container(
             padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
             decoration: BoxDecoration(
